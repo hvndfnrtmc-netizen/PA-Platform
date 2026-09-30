@@ -1,0 +1,137 @@
+function AwardCard({ record, canEdit, onEdit, onDelete, onPreview }: {
+  record: AwardRecord;
+  canEdit: boolean;
+  onEdit: (r: AwardRecord) => void;
+  onDelete: (r: AwardRecord) => void;
+  onPreview: (a: Attachment) => void;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef   = useRef<HTMLDivElement>(null);
+  const catMeta   = CATEGORY_META[record.category] ?? CATEGORY_META["AWARD"];
+  const eColor    = entityColor(record.awardeeEntity);
+
+  const isHighLevel = record.category === "国家级奖项" || record.category === "省级奖项";
+  const bgImageUrl = record.attachments.find(a => a.type === "image")?.url ?? null;
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function handler(e: MouseEvent) {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [menuOpen]);
+
+  return (
+    <div className="rounded-2xl overflow-hidden hover:shadow-xl transition-all relative flex flex-col"
+      style={{ border: `1px solid ${isHighLevel ? "rgba(244,63,94,0.15)" : "rgba(59,130,246,0.12)"}`, minHeight: 220 }}>
+
+      {/* Layer 1: background */}
+      {bgImageUrl ? (
+        <div className="absolute inset-0" style={{ backgroundImage: `url('${bgImageUrl}')`, backgroundSize: "cover", backgroundPosition: "center" }} />
+      ) : (
+        <div className="absolute inset-0" style={{ background: isHighLevel ? "linear-gradient(135deg, #fff1f2 0%, #fff7ed 100%)" : "linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%)" }} />
+      )}
+
+      {/* Layer 2: overlay */}
+      {bgImageUrl && <div className="absolute inset-0 bg-white/82 backdrop-blur-[3px]" />}
+
+      {/* Layer 3: content */}
+      <div className="relative z-10 p-5 flex flex-col gap-3 flex-1">
+
+      {/* ⋮ 操作菜单 */}
+      {canEdit && (
+        <div className="absolute top-3 right-3 z-10" ref={menuRef}>
+          <button
+            onClick={e => { e.stopPropagation(); setMenuOpen(o => !o); }}
+            className="p-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+            title="更多操作"
+          >
+            <MoreVertical size={14} />
+          </button>
+          {menuOpen && (
+            <div className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-xl overflow-hidden"
+              style={{ border: "1px solid #e2e8f0", minWidth: 110, zIndex: 20 }}>
+              <button
+                onClick={() => { setMenuOpen(false); onEdit(record); }}
+                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+              >
+                <Pencil size={13} />编辑
+              </button>
+              <button
+                onClick={() => { setMenuOpen(false); onDelete(record); }}
+                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors"
+              >
+                <Trash2 size={13} />删除
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 类别 + 重要性 */}
+      <div className="flex items-start justify-between gap-2 pr-6">
+        <span className="text-xs px-2.5 py-1 rounded-full font-medium"
+          style={{ background: `${catMeta.color}18`, color: catMeta.color }}>
+          {catMeta.icon} {catMeta.label}
+        </span>
+        <StarRow level={record.importanceLevel} />
+      </div>
+
+      {/* 标题 */}
+      <div>
+        <h3 className="text-sm font-semibold text-slate-800 leading-snug mb-1">{record.title}</h3>
+        {record.description && <p className="text-xs text-slate-500 leading-relaxed line-clamp-2">{record.description}</p>}
+      </div>
+
+      {/* 元信息 */}
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center gap-2">
+          <Building2 size={11} style={{ color: eColor }} className="flex-shrink-0" />
+          <span className="text-xs font-medium px-2 py-0.5 rounded-md" style={{ background: `${eColor}18`, color: eColor }}>{entityShort(record.awardeeEntity)}</span>
+          <span className="text-xs text-slate-500 truncate">{record.awardeeEntity}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <BadgeCheck size={11} className="flex-shrink-0 text-slate-400" />
+          <span className="text-xs text-slate-600 truncate">{record.awardedBy}</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <Calendar size={11} className="text-slate-400" />
+            <span className="text-xs text-slate-500">{record.awardedAt}</span>
+          </div>
+          {record.regionLabel && (
+            <span className="text-xs px-2 py-0.5 rounded-md text-slate-500" style={{ background: "#f1f5f9" }}>{record.regionLabel}</span>
+          )}
+        </div>
+      </div>
+
+      {/* 附件 */}
+      {record.attachments.length > 0 && (
+        <div>
+          <p className="text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wide">获奖证明</p>
+          <div className="flex flex-wrap gap-2">
+            {record.attachments.map((att, i) => (
+              <button key={i} onClick={() => onPreview(att)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
+                style={{ background: att.type === "image" ? "rgba(59,130,246,0.08)" : "rgba(245,158,11,0.08)", color: att.type === "image" ? "#2563eb" : "#d97706", border: `1px solid ${att.type === "image" ? "rgba(59,130,246,0.2)" : "rgba(245,158,11,0.2)"}` }}>
+                {att.type === "image" ? <ImageIcon size={11} /> : <span>PDF</span>}
+                {att.name.length > 14 ? att.name.slice(0, 14) + "…" : att.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {record.sourceFeishuUrl && (
+        <a href={record.sourceFeishuUrl} target="_blank" rel="noopener noreferrer"
+          className="flex items-center gap-1.5 text-xs opacity-50 hover:opacity-100 transition-opacity self-start"
+          style={{ color: "#3b82f6" }}>
+          <ExternalLink size={11} />飞书原始记录
+        </a>
+      )}
+
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,22 @@
+{
+  "regions": ["hkg1"],
+  "functions": {
+    "src/app/api/reception/upload-photo/route.ts": {
+      "maxDuration": 30
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/deadline-reminder",
+      "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/check-deadlines",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/backup-major-projects",
+      "schedule": "0 2 * * 1"
+    }
+  ]
+}

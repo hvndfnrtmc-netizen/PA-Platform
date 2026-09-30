@@ -1,0 +1,1234 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Department {
+  id                String             @id @default(cuid())
+  name              String
+  code              String             @unique
+  type              DepartmentType     @default(BUSINESS)
+  feishuDeptId      String?            @unique @map("feishu_dept_id")
+  parentId          String?            @map("parent_id")
+  contactUserId     String?            @map("contact_user_id")
+  /// PA 侧直接维护的部门负责人飞书 open_id（覆盖 contactUser.feishuUserId，用于跨系统通知）
+  headFeishuOpenId  String?            @map("head_feishu_open_id")
+  /// 部门负责人姓名（与 headFeishuOpenId 配套，冗余存储便于审计日志展示）
+  headName          String?            @map("head_name")
+  isActive          Boolean            @default(true) @map("is_active")
+  deletedAt         DateTime?          @map("deleted_at")
+  deletedBy         String?            @map("deleted_by")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  contactUser       User?              @relation("DeptContact", fields: [contactUserId], references: [id])
+  parent            Department?        @relation("DeptTree", fields: [parentId], references: [id])
+  children          Department[]       @relation("DeptTree")
+  modulePermissions ModulePermission[]
+  taskAssignments   TaskAssignment[]
+  users             User[]             @relation("UserDept")
+
+  @@map("departments")
+}
+
+model User {
+  id                       String               @id @default(cuid())
+  feishuUserId             String?              @unique @map("feishu_user_id")
+  feishuUnionId            String?              @unique @map("feishu_union_id")
+  /// 飞书 open_id，用于发卡通知（每个应用不同，需在超级后台手动录入）
+  feishuOpenId             String?              @unique @map("feishu_open_id")
+  name                     String
+  /// 英文/拼音名，用于 OCR 双语检索（如 Kaijing Gao）
+  englishName              String?              @map("english_name")
+  email                    String               @unique
+  avatarUrl                String?              @map("avatar_url")
+  role                     UserRole             @default(DEPT_CONTACT)
+  passwordHash             String?              @map("password_hash")
+  departmentId             String?              @map("department_id")
+  isActive                 Boolean              @default(true) @map("is_active")
+  deletedAt                DateTime?            @map("deleted_at")
+  lastLoginAt              DateTime?            @map("last_login_at")
+  lastLoginIp              String?              @map("last_login_ip")
+  createdAt                DateTime             @default(now()) @map("created_at")
+  updatedAt                DateTime             @updatedAt @map("updated_at")
+  /// * 党员关系模块个人白名单授权（SUPER_ADMIN 默认放行，无需此字段）
+  hasPartyModuleAccess     Boolean              @default(false) @map("has_party_module_access")
+  assetVersions            AssetVersion[]
+  createdAssets            Asset[]              @relation("AssetCreator")
+  auditLogs                AuditLog[]
+  deptContactOf            Department[]         @relation("DeptContact")
+  generatedDocs            Document[]
+  modulePermissionsGranted ModulePermission[]   @relation("PermGranter")
+  createdAwards            QualificationAward[] @relation("AwardCreator")
+  createdTasks             Task[]               @relation("TaskCreator")
+  lockedTasks              Task[]               @relation("TaskLocker")
+  department               Department?          @relation("UserDept", fields: [departmentId], references: [id])
+  receptionHostOf               Reception[]               @relation("ReceptionHost")
+  createdReceptions             Reception[]               @relation("ReceptionCreator")
+  scheduledNotifications        ScheduledNotification[]   @relation("ScheduledNotificationCreator")
+  talentCyclesOwned             TalentProjectCycle[]      @relation("CycleOwner")
+  talentProjectsDefaultOwned    TalentProject[]           @relation("ProjectDefaultOwner")
+
+  @@map("users")
+}
+
+model TaskTemplate {
+  id                  String   @id @default(cuid())
+  name                String
+  description         String?
+  type                TaskType @default(PERIODIC)
+  feishuTemplateUrl   String?  @map("feishu_template_url")
+  feishuTemplateToken String?  @map("feishu_template_token")
+  fieldsSchema        Json?    @map("fields_schema")
+  cronExpression      String?  @map("cron_expression")
+  isActive            Boolean  @default(true) @map("is_active")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  tasks               Task[]
+
+  @@map("task_templates")
+}
+
+model Task {
+  id                       String           @id @default(cuid())
+  title                    String
+  description              String?
+  type                     TaskType         @default(SPECIAL)
+  status                   TaskStatus       @default(DRAFT)
+  templateId               String?          @map("template_id")
+  feishuSheetUrl           String?          @map("feishu_sheet_url")
+  feishuSpreadsheetToken   String?          @map("feishu_spreadsheet_token")
+  feishuSpreadsheetSheetId String?          @map("feishu_spreadsheet_sheet_id")
+  fieldsSchema             Json?            @map("fields_schema")
+  deptPermissions          Json?            @map("dept_permissions")
+  deadline                 DateTime?
+  archivedAt               DateTime?        @map("archived_at")
+  lockedAt                 DateTime?        @map("locked_at")
+  lockedById               String?          @map("locked_by_id")
+  deletedAt                DateTime?        @map("deleted_at")
+  createdById              String           @map("created_by_id")
+  createdAt                DateTime         @default(now()) @map("created_at")
+  updatedAt                DateTime         @updatedAt @map("updated_at")
+  assets                   Asset[]
+  documents                Document[]
+  assignments              TaskAssignment[]
+  createdBy                User             @relation("TaskCreator", fields: [createdById], references: [id])
+  lockedBy                 User?            @relation("TaskLocker", fields: [lockedById], references: [id])
+  template                 TaskTemplate?    @relation(fields: [templateId], references: [id])
+
+  @@map("tasks")
+}
+
+model TaskAssignment {
+  id                  String           @id @default(cuid())
+  taskId              String           @map("task_id")
+  departmentId        String           @map("department_id")
+  /// 多选指派人：存储平台 User.id 数组 ["userId1","userId2"]
+  /// 空数组 = 未指定，发卡时 fallback 到部门 headFeishuOpenId
+  assigneeUserIds     Json             @default("[]") @map("assignee_user_ids")
+  status              AssignmentStatus @default(PENDING_SEND)
+  feishuCardMessageId String?          @map("feishu_card_message_id")
+  submittedAt         DateTime?        @map("submitted_at")
+  /// 驳回信息
+  rejectNote          String?          @map("reject_note")
+  rejectedById        String?          @map("rejected_by_id")
+  rejectedAt          DateTime?        @map("rejected_at")
+  /// 是否已发送 DDL 催办提醒（防重发，12h 内只发一次）
+  isReminderSent      Boolean          @default(false) @map("is_reminder_sent")
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+
+  department Department @relation(fields: [departmentId], references: [id])
+  task       Task       @relation(fields: [taskId], references: [id])
+
+  @@unique([taskId, departmentId])
+  @@map("task_assignments")
+}
+
+model Asset {
+  id              String         @id @default(cuid())
+  metricKey       String         @map("metric_key")
+  metricName      String         @map("metric_name")
+  category        AssetCategory  @default(MISC)
+  value           String
+  unit            String?
+  period          String
+  periodLabel     String         @map("period_label")
+  sourceTaskId    String?        @map("source_task_id")
+  sourceFeishuUrl String?        @map("source_feishu_url")
+  sourceCellRef   String?        @map("source_cell_ref")
+  confidence      Float          @default(1.0)
+  isEncrypted     Boolean        @default(false) @map("is_encrypted")
+  encryptedValue  String?        @map("encrypted_value")
+  createdById     String         @map("created_by_id")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+  versions        AssetVersion[]
+  createdBy       User           @relation("AssetCreator", fields: [createdById], references: [id])
+  sourceTask      Task?          @relation(fields: [sourceTaskId], references: [id])
+
+  @@unique([metricKey, period])
+  @@index([category, period])
+  @@map("assets")
+}
+
+model AssetVersion {
+  id           String   @id @default(cuid())
+  assetId      String   @map("asset_id")
+  oldValue     String   @map("old_value")
+  newValue     String   @map("new_value")
+  changeReason String?  @map("change_reason")
+  changedById  String   @map("changed_by_id")
+  changedAt    DateTime @default(now()) @map("changed_at")
+  asset        Asset    @relation(fields: [assetId], references: [id])
+  changedBy    User     @relation(fields: [changedById], references: [id])
+
+  @@index([assetId, changedAt])
+  @@map("asset_versions")
+}
+
+model Document {
+  id             String   @id @default(cuid())
+  title          String
+  templateFile   String   @map("template_file")
+  outputFile     String?  @map("output_file")
+  placeholderMap Json?    @map("placeholder_map")
+  renderStatus   String   @default("PENDING")
+  renderError    String?  @map("render_error")
+  taskId         String?  @map("task_id")
+  createdById    String   @map("created_by_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  createdBy      User     @relation(fields: [createdById], references: [id])
+  task           Task?    @relation(fields: [taskId], references: [id])
+
+  @@map("documents")
+}
+
+model AuditLog {
+  id                String      @id @default(cuid())
+  userId            String      @map("user_id")
+  action            AuditAction
+  resourceType      String?     @map("resource_type")
+  resourceId        String?     @map("resource_id")
+  metadata          Json?
+  ipAddress         String?     @map("ip_address")
+  userAgent         String?     @map("user_agent")
+  isDangerous       Boolean     @default(false) @map("is_dangerous")
+  feishuVerifyToken String?     @map("feishu_verify_token")
+  createdAt         DateTime    @default(now()) @map("created_at")
+  user              User        @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+  @@index([resourceType, resourceId])
+  @@map("audit_logs")
+}
+
+model QualificationAward {
+  id              String    @id @default(cuid())
+  awardedAt       String    @map("awarded_at")
+  awardedAtYear   Int       @map("awarded_at_year")
+  awardedBy       String    @map("awarded_by")
+  awardeeEntity   String    @map("awardee_entity")
+  title           String
+  category        String    @default("AWARD")
+  description     String?
+  attachments     Json      @default("[]")
+  sourceProjectId String?   @map("source_project_id")   // 关联的重大项目 ID，用于跨模块跳转
+  isActive        Boolean   @default(true) @map("is_active")
+  deletedAt       DateTime? @map("deleted_at")
+  createdById     String    @map("created_by_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  createdBy       User      @relation("AwardCreator", fields: [createdById], references: [id])
+
+  @@index([awardeeEntity, awardedAtYear])
+  @@index([category])
+  @@index([sourceProjectId])
+  @@map("qualifications_awards")
+}
+
+model ModulePermission {
+  id           String     @id @default(cuid())
+  moduleKey    String     @map("module_key")
+  departmentId String     @map("department_id")
+  permLevel    PermLevel  @map("perm_level")
+  grantedById  String     @map("granted_by_id")
+  isActive     Boolean    @default(true) @map("is_active")
+  expiresAt    DateTime?  @map("expires_at")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+  department   Department @relation(fields: [departmentId], references: [id])
+  grantedBy    User       @relation("PermGranter", fields: [grantedById], references: [id])
+
+  @@unique([moduleKey, departmentId])
+  @@index([moduleKey])
+  @@index([departmentId])
+  @@map("module_permissions")
+}
+
+model SystemConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("system_configs")
+}
+
+model MajorProject {
+  id             String             @id @default(cuid())
+  name           String // 项目名称
+
+  // ──── 新字段（树形结构与字典外键） ────
+  parentId             String?   @map("parent_id") // 父项目 ID（Self-relation 树形）
+  categoryDictId       String?   @map("category_dict_id") // 项目类别，外键→字典
+  companyEntityDictId  String?   @map("company_entity_dict_id") // 收款公司主体，外键→字典（保留兼容）
+  companyEntityNames   String[]  @default([]) @map("company_entity_names") // 收款公司主体（多选，存名称数组）
+  levelDictId          String?   @map("level_dict_id") // 项目级别，外键→字典（新）
+
+  // ──── 新字段（金额与时间） ────
+  totalAmount    Float?    @map("total_amount") // 总金额（万元，重命名自 totalSubsidy）
+  receivedAmount Float     @default(0) @map("received_amount") // 已到账金额（万元，重命名自 received）
+  receivedDate   DateTime? @map("received_date") // 到账时间
+
+  // ──── 新字段（归属与负责人） ────
+  affiliation        String? // 归属（"公司"或"个人"）
+  progress           String? @default("未开始") // 项目进度（"未开始" | "进行中" | "已结束"）
+  extractedYear      Int?    // 从项目名称中提取的四位年份（20xx），用于排序
+  ownerFeishuOpenId  String? @map("owner_feishu_open_id") // 项目负责人飞书 open_id
+
+  // ──── 新字段（证明材料与待办） ────
+  proofMaterials Json      @default("[]") @map("proof_materials") // 证明材料附件数组
+  todoItems      String?   @map("todo_items") // 待办事项纯文本（新，用于主界面直接展示）
+  communicationGroups Json @default("[]") @map("communication_groups") // 沟通群组数组 [{platform, name, targetIdOrUrl}]
+
+  // ──── 旧字段保留（作为备份，不再主动使用） ────
+  level          String?            @default("") // 级别：省级/市级/区级/板块/国家级（旧，保留备份）
+  status         String?            @default("未开始") // 进行中/未开始/已完成（旧，保留备份）
+  applyDate      DateTime? // 申报时间（旧，将迁移至 ProjectMilestone）
+  startDate      DateTime? // 开始时间（旧，将迁移至 ProjectMilestone）
+  midCheckDate   DateTime? // 中期验收时间（旧，将迁移至 ProjectMilestone）
+  endDate        DateTime? // 结项时间（旧，将迁移至 ProjectMilestone）
+  totalSubsidy   Float? // 补贴总额（万元，旧字段备份）
+  received       Float?             @default(0) // 已到账（万元，旧字段备份）
+  projectOwner   String? // 项目负责人（旧，字符串版）
+  projectManager String? // 项目经理（旧，保留备份）
+  rdTask         String? // 研究开发任务（旧，保留备份）
+  processRecord  String? // 过程记录（旧，保留备份）
+
+  // ──── 通用字段 ────
+  projectCode       String? // 立项名称/编号
+  isWeekFocus       Boolean            @default(false) // 周重点
+  isAmountAutoSum   Boolean            @default(false) @map("is_amount_auto_sum") // 自动汇总子项目金额
+  remark            String? // 备注
+  deletedAt      DateTime? // 软删除
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  // ──── 关联关系 ────
+  parent        MajorProject?       @relation("ProjectTree", fields: [parentId], references: [id])
+  children      MajorProject[]      @relation("ProjectTree")
+  categoryDict  MajorProjectDictionary? @relation("ProjectCategory", fields: [categoryDictId], references: [id])
+  companyEntityDict MajorProjectDictionary? @relation("ProjectCompanyEntity", fields: [companyEntityDictId], references: [id])
+  levelDict     MajorProjectDictionary? @relation("ProjectLevel", fields: [levelDictId], references: [id])
+
+  indicators     ProjectIndicator[] // 旧指标表（保留）
+  kpis           ProjectKPI[]       // 新指标表
+  milestones     ProjectMilestone[] // 生命周期节点
+  todos          ProjectTodo[]      // 待办事项
+  paymentRecords ProjectPaymentRecord[] // 到账记录明细
+
+  // ──── 飞书双向映射 ────
+  feishuRecordId   String? @unique @map("feishu_record_id")   // 飞书多维表格行 ID
+  feishuBitableUrl String? @map("feishu_bitable_url")          // 飞书行深层链接
+
+  @@unique([name])
+  @@index([parentId])
+  @@index([categoryDictId])
+  @@index([levelDictId])
+  @@map("major_projects")
+}
+
+/// 重大项目指标表（旧表，保留用于数据备份和历史兼容）
+model ProjectIndicator {
+  id        String       @id @default(cuid())
+  projectId String       // 保持驼峰格式，不映射（旧数据兼容）
+  name      String       // 指标名称
+  content   String?      @db.Text // 详细内容
+  owner     String?      // 负责人
+  isCustom  Boolean      @default(false) // false=5大默认指标, true=用户手动新增
+  sortOrder Int          @default(0)
+  project   MajorProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("project_indicators")
+}
+
+model ProjectTodo {
+  id          String       @id @default(cuid())
+  projectId   String       // 保持驼峰格式，不映射（旧数据兼容）
+  content     String
+  isCompleted Boolean      @default(false) // 保持驼峰格式
+  sortOrder   Int          @default(0)
+  createdAt   DateTime     @default(now())
+  project     MajorProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_todos")
+}
+
+/// 重大项目考核指标（新表，重构自 ProjectIndicator）
+model ProjectKPI {
+  id                 String       @id @default(cuid())
+  projectId          String       @map("project_id")
+  name               String       // 指标名称
+  content            String?      @db.Text // 详细内容（金额等）
+  ownerFeishuOpenId  String?      @map("owner_feishu_open_id") // 负责人飞书 open_id（新增）
+  isCustom           Boolean      @default(false) @map("is_custom") // false=5大默认指标, true=用户手动新增
+  sortOrder          Int          @default(0) @map("sort_order")
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+
+  project MajorProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("project_kpis")
+}
+
+/// 重大项目生命周期节点（时间轴/流程图）
+model ProjectMilestone {
+  id          String            @id @default(cuid())
+  projectId   String            @map("project_id")
+  type        MilestoneType     // APPLY | START | MID_CHECK | END
+  startDate   DateTime?         @map("start_date") // 开始日期（APPLY 节点用）
+  endDate     DateTime?         @map("end_date") // 结束日期（APPLY 节点用）
+  date        DateTime?         // 单点日期（START/MID_CHECK/END 节点用）
+  status      MilestoneStatus   @default(PENDING) // PENDING | DONE
+  notes       String?           @db.Text // 备注
+  attachments Json              @default("[]") // 附件数组
+  kpis        Json              @default("[]") // 考核指标（JSON 数组，仅 START/MID_CHECK/END 节点使用）
+  hasDefense  Boolean           @default(false) @map("has_defense") // 是否需要答辩
+  defenseDetails Json?          @map("defense_details") // 答辩详情（JSON 结构）
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  project MajorProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, type])
+  @@map("project_milestones")
+}
+
+/// 重大项目到账记录明细表（分批拨付资金）
+model ProjectPaymentRecord {
+  id          String       @id @default(cuid())
+  projectId   String       @map("project_id")
+  amount      Float        // 本次到账金额（万元）
+  paymentDate DateTime     @map("payment_date") // 到账日期
+  remark      String?      // 款项备注/阶段说明
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  project MajorProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("project_payment_records")
+}
+
+/// 重大项目字典表（独立，类似 ReceptionDictionary）
+model MajorProjectDictionary {
+  id        String   @id @default(cuid())
+  /// "level" | "category" | "companyEntity"
+  category  String
+  value     String
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active") // 软删除标志
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  projectsByCategory      MajorProject[] @relation("ProjectCategory")
+  projectsByCompanyEntity MajorProject[] @relation("ProjectCompanyEntity")
+  projectsByLevel         MajorProject[] @relation("ProjectLevel")
+
+  @@unique([category, value])
+  @@index([category])
+  @@map("major_project_dicts")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  PA_SPECIALIST
+  DEPT_CONTACT
+}
+
+enum DepartmentType {
+  PA
+  BUSINESS
+}
+
+enum TaskType {
+  PERIODIC
+  SPECIAL
+}
+
+enum TaskStatus {
+  DRAFT
+  PENDING
+  IN_PROGRESS
+  SUBMITTED
+  ARCHIVED
+  CANCELLED
+}
+
+enum AssignmentStatus {
+  PENDING_SEND // 待发送邀请
+  PENDING_FILL // 邀请已发，等待填报
+  SUBMITTED // 负责人已提交
+  REJECTED // 被驳回，待重填
+  ARCHIVED // 已归档
+}
+
+enum AssetCategory {
+  FINANCIAL
+  RD_PATENT
+  PERSONNEL
+  REGULATORY
+  MISC
+}
+
+enum AuditAction {
+  LOGIN
+  LOGOUT
+  VIEW_DASHBOARD
+  VIEW_ASSET
+  EXPORT_ASSET
+  CREATE_TASK
+  UPDATE_TASK
+  DELETE_TASK
+  ARCHIVE_TASK
+  LOCK_TASK
+  CREATE_USER
+  UPDATE_USER
+  DELETE_USER
+  CREATE_DEPARTMENT
+  UPDATE_DEPARTMENT
+  DELETE_DEPARTMENT
+  UPLOAD_TEMPLATE
+  GENERATE_DOCUMENT
+  COPILOT_QUERY
+  PERMISSION_CHANGE
+  GLOBAL_CONFIG
+  VIEW_AWARD
+  EXPORT_AWARD
+  CREATE_AWARD
+  UPDATE_AWARD
+  DELETE_AWARD
+  GRANT_PERMISSION
+  REVOKE_PERMISSION
+  CREATE_RECEPTION
+  UPDATE_RECEPTION
+  DELETE_RECEPTION
+  CANCEL_RECEPTION_NOTIFY
+}
+
+enum PermLevel {
+  VIEW
+  EDIT
+}
+
+enum TodoActionType {
+  URL          // 普通网址，新标签页打开
+  FEISHU_DOC   // 飞书文档链接
+  FEISHU_CHAT  // 飞书聊天 deeplink（actionValue = feishu open_id）
+  NONE         // 无操作按钮
+}
+
+enum MilestoneType {
+  APPLY       // 项目申报
+  START       // 开始/立项
+  MID_CHECK   // 中期验收
+  END         // 结项时间
+}
+
+enum MilestoneStatus {
+  PENDING     // 待推进
+  DONE        // 已完成
+}
+
+// ── 政府接待 ─────────────────────────────────────────────────────
+
+model Reception {
+  id               String    @id @default(cuid())
+  title            String // 会议名称/来访人员
+  startTime        DateTime  @map("start_time")
+  endTime          DateTime? @map("end_time")
+  level            String    @default("") // 级别（来自 ReceptionDict category=level）
+  /// 主接待 —— 平台用户 FK（历史遗留，新选择通过 hostDictId）
+  hostUserId       String?   @map("host_user_id")
+  /// 主接待 —— 显示姓名（与 hostDictId 冗余存储，兼容历史记录和统计）
+  hostName         String?   @map("host_name")
+  /// 主接待 —— 层级字典 ID（来自 ReceptionDictionary category=host）
+  hostDictId       String?   @map("host_dict_id")
+  /// 主接待多选 —— 层级字典 ID 数组（新字段，向下兼容 hostDictId）
+  hostDictIds      String[]  @default([]) @map("host_dict_ids")
+  /// 着装要求（正装 / 司服 / 自定义，来自 ReceptionDict category=dressCode）
+  dressCode        String?   @default("司服") @map("dress_code")
+  /// 接待形式多选，String[]，e.g. ["展厅","座谈"]
+  formats          Json      @default("[]")
+  background       String?   @db.Text // 来访背景（长文本）
+  address          String?   @db.Text // 接待地址（可选，供地图跳转使用）
+  navigationAddress String?  @db.Text @map("navigation_address") // 导航搜索词（高德定位关键词，优先用于地图跳转）
+  purpose          String    @default("") // 来访目的
+  status           String    @default("正常") // 状态
+  /// 调研文件 FileItem[]：[{type:"local"|"feishu",name,url,size?}]
+  surveyFiles      Json      @default("[]")
+  /// 会议纪要 FileItem[]
+  meetingMinutes   Json      @default("[]")
+  /// 会议照片 URL[]
+  meetingPhotos    String[]  @default([]) @map("meeting_photos")
+  /// 已启用的待办大类分类名称 string[]（旧字段，保留兼容）
+  todos            Json      @default("[]")
+  /// 新版待办 TodoCategory[] JSON，含 id/title/tasks 完整树形结构
+  todoList         Json      @default("[]") @map("todo_list")
+  /// 领导介绍文字（长文本，可选）
+  leaderIntroText   String?   @db.Text @map("leader_intro_text")
+  /// 领导介绍图片 URL 列表
+  leaderIntroImages String[]  @default([]) @map("leader_intro_images")
+  /// 备注（长文本，可选）
+  remarks          String?   @db.Text
+  /// 用户新增的自定义字段数据，格式 { "custom_xxx": "value" }
+  customData       Json?     @default("{}") @map("custom_data")
+  /// 飞书多维表格行 ID，用于记录级双向映射（一条接待 ↔ 一行 Bitable）
+  feishuRecordId   String?   @unique @map("feishu_record_id")
+  /// 飞书多维表格行深层链接，供用户在详情抽屉一键跳转
+  feishuBitableUrl String?   @map("feishu_bitable_url")
+  deletedAt        DateTime? @map("deleted_at")
+  createdById      String    @map("created_by_id")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  hostUser               User?                    @relation("ReceptionHost", fields: [hostUserId], references: [id])
+  createdBy              User                     @relation("ReceptionCreator", fields: [createdById], references: [id])
+  todoTasks              ReceptionTodoTask[]
+  receptionTodos         ReceptionTodo[]          @relation("ReceptionTodos")
+  scheduledNotifications ScheduledNotification[]  @relation("ReceptionScheduledNotifications")
+
+  @@index([startTime])
+  @@index([level])
+  @@index([status])
+  @@index([purpose])
+  @@map("receptions")
+}
+
+/// 政府接待待办全局预设模板库（由 seed 初始化，用户从此勾选导入到具体接待记录）
+model ReceptionTodoTemplate {
+  id                 String         @id @default(cuid())
+  /// 所属大类名称，e.g. "展车沟通"（用于前端分组展示）
+  category           String
+  /// 模板标题（一级模板可与 category 相同；二级子任务为具体内容）
+  title              String
+  description        String?
+  defaultActionType  TodoActionType @default(NONE) @map("default_action_type")
+  defaultActionValue String?        @map("default_action_value")
+  /// 自关联：null = 一级模板（大类），非 null = 二级子任务
+  parentId           String?        @map("parent_id")
+  order              Int            @default(0)
+  isActive           Boolean        @default(true) @map("is_active")
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
+
+  parent   ReceptionTodoTemplate?  @relation("TemplateTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children ReceptionTodoTemplate[] @relation("TemplateTree")
+
+  @@index([category, parentId, order])
+  @@map("reception_todo_templates")
+}
+
+/// 政府接待实例待办（从模板导入或手动创建，支持父子层级和拖拽排序）
+model ReceptionTodo {
+  id          String         @id @default(cuid())
+  receptionId String         @map("reception_id")
+  /// 溯源到哪个模板（手动新增为 null）
+  templateId  String?        @map("template_id")
+  title       String
+  /// 实例级个性化备注（完全隔离于模板表，绝不回写模板）
+  remark      String?        @db.Text
+  isCompleted Boolean        @default(false) @map("is_completed")
+  actionType  TodoActionType @default(NONE) @map("action_type")
+  /// URL / 飞书文档链接 / 飞书 open_id，与 actionType 配套
+  actionValue String?        @map("action_value")
+  /// 自关联：null = 一级任务，非 null = 二级子任务
+  parentId    String?        @map("parent_id")
+  /// 拖拽排序用整数（同层级内升序；前端拖拽后批量更新）
+  order       Int            @default(0)
+  deletedAt   DateTime?      @map("deleted_at")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  reception Reception       @relation("ReceptionTodos", fields: [receptionId], references: [id], onDelete: Cascade)
+  parent    ReceptionTodo?  @relation("TodoTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children  ReceptionTodo[] @relation("TodoTree")
+
+  @@index([receptionId, parentId, order])
+  @@map("reception_todos")
+}
+
+/// 政府接待待办子任务（由大类分类自动生成）
+model ReceptionTodoTask {
+  id          String    @id @default(cuid())
+  receptionId String    @map("reception_id")
+  /// 触发此任务的大类分类名称，如"展车沟通"
+  category    String
+  /// 任务内容（日程创建类可含 {{DATE}}{{TITLE}}{{FORMATS}} 占位符）
+  content     String
+  isCompleted Boolean   @default(false) @map("is_completed")
+  /// 可选跳转链接（旧字段，保留兼容）
+  link        String?
+  sortOrder   Int       @default(0) @map("sort_order")
+  /// 万能跳转按钮类型：URL | FEISHU_DOC | FEISHU_CHAT
+  actionType  String?   @map("action_type")
+  /// 万能跳转按钮的值（URL / 飞书文档链接 / 飞书 openId）
+  actionValue String?   @map("action_value")
+  deletedAt   DateTime? @map("deleted_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  reception Reception @relation(fields: [receptionId], references: [id], onDelete: Cascade)
+
+  @@index([receptionId, category])
+  @@map("reception_todo_tasks")
+}
+
+/// 政府接待动态字典：存储 level / format / purpose / status / dressCode 的用户可扩展选项
+/// format 分类支持两级层级（parentId != null 为子项），其余分类仅使用一级（parentId = null）
+model ReceptionDictionary {
+  id        String   @id @default(cuid())
+  /// "level" | "format" | "purpose" | "status" | "dressCode"
+  category  String
+  value     String
+  /// 父级字典项 ID（仅 format 分类使用；null 表示一级选项）
+  parentId  String?  @map("parent_id")
+  sortOrder Int      @default(0) @map("sort_order")
+  isDefault Boolean  @default(false) @map("is_default")
+  /// 软删除标志：false = 已停用（不出现在下拉选项中，但历史记录仍可映射）
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  parent   ReceptionDictionary?  @relation("DictTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children ReceptionDictionary[] @relation("DictTree")
+
+  // 唯一性由 API 层按层级（同 parentId 下不能重名）强制，不用全局约束
+  // 原 @@unique([category, value]) 已删除，允许不同父级下存在同名子项
+  @@index([category, parentId, sortOrder])
+  @@index([category, value])
+  @@map("reception_dicts")
+}
+
+// ── 定时通知 ──────────────────────────────────────────────────────────────────
+
+enum ScheduledNotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+/// 政府接待定时飞书通知任务
+model ScheduledNotification {
+  id              String                      @id @default(cuid())
+  /// 关联的接待记录
+  receptionId     String                      @map("reception_id")
+  /// 计划发送时间（UTC）
+  scheduledAt     DateTime                    @map("scheduled_at")
+  /// 状态：PENDING → SENT / FAILED / CANCELLED
+  status          ScheduledNotificationStatus @default(PENDING)
+  /// 发送 payload：{ fields, targetIds, leaderIntroImages?, receptionTitle }
+  payload         Json
+  /// 发送失败时记录错误信息
+  errorMessage    String?                     @db.Text @map("error_message")
+  /// QStash 消息 ID，用于撤回定时任务
+  qstashMessageId String?                     @map("qstash_message_id")
+  /// 创建者 ID
+  createdById     String                      @map("created_by_id")
+  createdAt       DateTime                    @default(now()) @map("created_at")
+  updatedAt       DateTime                    @updatedAt @map("updated_at")
+
+  reception  Reception @relation("ReceptionScheduledNotifications", fields: [receptionId], references: [id])
+  createdBy  User      @relation("ScheduledNotificationCreator",    fields: [createdById], references: [id])
+
+  @@index([status, scheduledAt])
+  @@map("scheduled_notifications")
+}
+
+/// 全局飞书通知目标（群聊 / 个人），由超级管理员在后台统一维护
+/// 所有业务模块的"发送通知"弹窗直接读取此表，不再依赖 localStorage
+model FeishuNotificationTarget {
+  id            String   @id @default(cuid())
+  name          String                        // 备注名称（如：PA小群、Zoe）
+  feishuId      String   @unique              // 飞书 ID（oc_... 群聊 / ou_... 个人）
+  type          String                        // "GROUP" | "USER"
+  modules       String[] @default([])         // 关联业务模块 e.g. "reception","major-project","talent","all"
+  /// 该用户所属的所有群聊名称（N-to-M，允许一人同时属于多个群）
+  relatedGroups String[] @default([])         @map("related_groups")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  @@map("feishu_notification_targets")
+}
+
+/// 通用页面配置：标题、标语、快捷链接（支持多模块）
+model PageConfig {
+  id          String   @id @default(cuid())
+  pageId      String   @unique // 页面唯一标识，如 'major-projects', 'awards', 'odc'
+  title       String   // 页面大标题
+  description String?  // 标语/备注
+  links       Json     @default("[]") // 快捷链接 [{ name: '...', url: '...' }]
+  customData  Json     @default("{}") // 模块专属扩展配置（如党建模块联系人、公告文案等）
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("page_configs")
+}
+
+// ── 落地协议 ─────────────────────────────────────────────────────
+
+model LandingAgreement {
+  id           String   @id @default(cuid())
+  name         String
+  entityName   String
+  partnerName  String
+  signDate     DateTime
+  startYear    Int
+  endYear      Int
+  kpiItems     AgreementKPI[]
+  deliverables AgreementDeliverable[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("landing_agreements")
+}
+
+model AgreementKPI {
+  id           String           @id @default(cuid())
+  agreementId  String
+  agreement    LandingAgreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  year         Int
+  kpiType      String
+  targetValue  Float
+  actualValue  Float            @default(0)
+  unit         String
+
+  @@map("agreement_kpis")
+}
+
+model AgreementDeliverable {
+  id          String           @id @default(cuid())
+  agreementId String
+  agreement   LandingAgreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  name        String
+  deadline    DateTime
+  status      String           @default("PENDING")
+  attachments Json             @default("[]")
+
+  @@map("agreement_deliverables")
+}
+
+// ── 数据中台 ─────────────────────────────────────────────────────
+
+model CompanyEntity {
+  id             String   @id @default(cuid())
+  name           String   @unique
+  unifiedCode    String?
+  registeredDate DateTime?
+  registeredCap  Float?
+  financials     YearlyFinancial[]
+  ips            IntellectualProperty[]
+  talents        YearlyTalentProfile[]
+
+  @@map("company_entities")
+}
+
+model YearlyFinancial {
+  id          String        @id @default(cuid())
+  entityId    String
+  entity      CompanyEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  year        Int
+  revenue     Float
+  tax         Float
+  netProfit   Float
+  rdExpense   Float
+  totalAssets Float
+
+  @@unique([entityId, year])
+  @@map("yearly_financials")
+}
+
+model IntellectualProperty {
+  id            String        @id @default(cuid())
+  entityId      String        @unique
+  entity        CompanyEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  inventionAuth Int           @default(0)
+  inventionApp  Int           @default(0)
+  utilityModel  Int           @default(0)
+  softwareCr    Int           @default(0)
+  lastUpdatedAt DateTime      @updatedAt
+
+  @@map("intellectual_properties")
+}
+
+model YearlyTalentProfile {
+  id              String        @id @default(cuid())
+  entityId        String
+  entity          CompanyEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  year            Int
+  totalHeadcount  Int
+  rdHeadcount     Int
+  phdCount        Int
+  masterCount     Int
+  highLevelTalent Int
+
+  @@unique([entityId, year])
+  @@map("yearly_talent_profiles")
+}
+
+// ── ODC 机构 ─────────────────────────────────────────────────────
+
+model OdcInstitution {
+  id                  String   @id @default(cuid())
+  shortName           String
+  fullName            String
+  jurisdiction        String   // 中央部委 | 江苏省 | 上海市 | 广东省 | 湖北省
+  verticalLine        String   // 工信条线 | 发改条线 | 商务条线 | 科技条线 | 人社条线 | 其他条线
+  level               String   // 国家级 | 省级 | 市级 | 区级 | 板块
+  divisions           Json     @default("[]")   // OdcDivision[]
+  websiteUrl          String?  @map("website_url")
+  linkedReceptionIds  String[] @default([]) @map("linked_reception_ids")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@map("odc_institutions")
+}
+
+// ── ODC 机构 AI 情报研判 ──────────────────────────────────────────
+
+model InstitutionIntelligence {
+  id            String   @id @default(cuid())
+  institutionId String   @unique @map("institution_id")
+  lastScrapedAt DateTime @default(now()) @map("last_scraped_at")
+  rawNewsData   Json     @default("[]") @map("raw_news_data")
+  aiAnalysis    Json     @default("{}") @map("ai_analysis")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("institution_intelligences")
+}
+
+// ── ODC 业务条线（动态字典）─────────────────────────────────────
+
+model OdcBusinessLine {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("odc_business_lines")
+}
+
+// ── ODC 下设科室（树状，支持自关联）────────────────────────────────
+
+model OdcSubDepartment {
+  id               String             @id @default(cuid())
+  institutionId    String             @map("institution_id")
+  name             String
+  responsibilities String?            @db.Text @map("responsibilities")
+  contactPersonId      String?            @map("contact_person_id")
+  externalContactName  String?            @map("external_contact_name")
+  parentId             String?            @map("parent_id")
+  sortOrder            Int                @default(0) @map("sort_order")
+  createdAt            DateTime           @default(now()) @map("created_at")
+
+  parent           OdcSubDepartment?  @relation("SubDeptChildren", fields: [parentId], references: [id])
+  children         OdcSubDepartment[] @relation("SubDeptChildren")
+
+  @@map("odc_sub_departments")
+}
+
+// ── ODC 领导班子 ────────────────────────────────────────────────
+
+model OdcLeader {
+  id            String   @id @default(cuid())
+  institutionId String   @map("institution_id")
+  name          String
+  title         String
+  avatarUrl     String?  @map("avatar_url")
+  bio           String?  @db.Text
+  profileUrl    String?  @map("profile_url")
+  sortOrder     Int      @default(0) @map("sort_order")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("odc_leaders")
+}
+
+// ── ODC 情报 ─────────────────────────────────────────────────────
+
+model OdcIntelligence {
+  id            String   @id @default(cuid())
+  nodeId        String   @unique
+  officialUrl   String?
+  departments   Json?
+  leadership    Json?
+  recentNews    Json?
+  aiInsights    String?  @db.Text
+  lastScrapedAt DateTime @default(now())
+
+  @@map("odc_intelligence")
+}
+
+// ── 党员关系转接 ─────────────────────────────────────────────────
+
+/// 党员组织关系转接申请记录
+model PartyTransferRecord {
+  id               String   @id @default(cuid())
+  userId           String   @map("user_id")
+  userName         String   @map("user_name")
+  transferType     String   @map("transfer_type")   // 转入申请 / 转出申请
+  currentStage     String   @default("档案上传") @map("current_stage")
+  /// DRAFT / SUBMITTED / REJECTED / COMPLETED
+  /// 多级审批: STAGE1_SUBMITTED / STAGE1_REJECTED / STAGE1_COMPANY_APPROVED / STAGE1_COMMITTEE_APPROVED
+  status           String   @default("DRAFT")
+  /// 上传材料 JSON: { "入党申请书": [{name, url, status?, rejectReason?}], ... }
+  materials        Json     @default("{}")
+  /// 草稿快照：存储所有步骤的表单状态
+  draftData        Json?    @map("draft_data")
+  /// 驳回原因（审核员填写）
+  rejectReason     String?  @db.Text @map("reject_reason")
+  /// 目标党支部名称
+  targetBranchName String?  @map("target_branch_name")
+  /// 申请人真实姓名
+  realName         String?  @map("real_name")
+  /// 申请人身份证号
+  idCardNumber     String?  @map("id_card_number")
+  /// 党费问卷数据: { phone, feeBaseType, feeBaseValue, calculatedFee, receiptOcrPassed, receiptUrl }
+  partyFeeData     Json?    @map("party_fee_data")
+  /// 阶段4信息采集台账数据
+  collectedInfo    Json?    @map("collected_info")
+  /// 员工是否发起了修改台账的申请
+  stage4ModifyRequested Boolean @default(false) @map("stage4_modify_requested")
+  /// 员工是否发起了阶段一撤回请求（需管理员同意后才重置为 DRAFT）
+  stage1WithdrawRequested Boolean @default(false) @map("stage1_withdraw_requested")
+  /// 驳回历史记录 JSON 数组
+  /// 结构: [{round, rejectedAt, files: [{category, fileName, reason}]}]
+  rejectionHistory Json?    @map("rejection_history")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("party_transfer_records")
+}
+
+/// 党员组织关系转出申请
+model PartyTransferOutRequest {
+  id              String   @id @default(cuid())
+  /// 一人同一时间只能有一个转出申请
+  userId          String   @unique @map("user_id")
+  /// 姓名（从台账或 User 表提取）
+  name            String?
+  /// 接收方党委抬头
+  targetCommittee String?  @map("target_committee")
+  /// 具体转入党组织名称
+  targetBranch    String?  @map("target_branch")
+  /// 申请原因
+  reason          String?  @db.Text
+  /// DRAFT / SUBMITTED / APPROVED / REJECTED
+  status          String   @default("DRAFT")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("party_transfer_out_requests")
+}
+
+// ── 人才申报项目管理 ────────────────────────────────────────────────────────
+
+model TalentProject {
+  id                   String    @id @default(cuid())
+  name                 String
+  level                String    // 国家级, 省级, 市级, 区级
+  region               String    @default("")
+  applicationUrl       String?   @map("application_url")
+  wechatContactInfo    String?   @map("wechat_contact_info")
+  declarationFrequency String?   @map("declaration_frequency")
+  cycleRuleConfig      Json?     @map("cycle_rule_config")
+  currentNode          String?   @map("current_node")
+  declarationNodes     Json?     @default("[]") @map("declaration_nodes")
+  policyDescription    String?   @db.Text @map("policy_description")
+  policySections       Json?     @default("[]") @map("policy_sections")
+  policyLinks          Json?     @default("[]") @map("policy_links")
+  attachments          Json?     @default("[]")
+  cloudAttachments     Json?     @map("cloud_attachments")
+  isKeyProject         Boolean   @default(false) @map("is_key_project")
+  defaultOwnerId       String?   @map("default_owner_id")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+  deletedAt            DateTime? @map("deleted_at")
+
+  defaultOwner         User?                    @relation("ProjectDefaultOwner", fields: [defaultOwnerId], references: [id])
+  companies            TalentProjectCompany[]   @relation("ProjectCompanies")
+
+  @@index([level])
+  @@index([region])
+  @@index([deletedAt])
+  @@map("talent_projects")
+}
+
+/// 公司级表：关联 TalentProject
+model TalentProjectCompany {
+  id          String    @id @default(cuid())
+  projectId   String    @map("project_id")
+  name        String                          // 公司名称
+  unifiedCode String?   @map("unified_code")  // 统一社会信用代码
+  sortOrder   Int       @default(0) @map("sort_order")
+  deletedAt   DateTime? @map("deleted_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  project TalentProject        @relation("ProjectCompanies", fields: [projectId], references: [id], onDelete: Cascade)
+  cycles  TalentProjectCycle[] @relation("CompanyCycles")
+
+  @@index([projectId])
+  @@map("talent_project_companies")
+}
+
+/// 周期级表：关联 TalentProjectCompany
+model TalentProjectCycle {
+  id               String    @id @default(cuid())
+  companyId        String    @map("company_id")
+  name             String                            // 周期名称，如 "2024年5月"
+  windowStartDate  DateTime? @map("window_start_date")
+  windowEndDate    DateTime? @map("window_end_date")
+  declarationNodes Json      @default("[]") @map("declaration_nodes")  // 当前周期的节点进度
+  totalFunding     Decimal?  @db.Decimal(15, 2) @map("total_funding")  // 本期覆盖资金
+  headcount        Int?                              // 本期覆盖人数
+  ownerId          String?   @map("owner_id")        // 责任人 ID
+  feishuGroupUrl   String?   @map("feishu_group_url") // 本周期飞书沟通群链接
+  sortOrder        Int       @default(0) @map("sort_order")
+  deletedAt        DateTime? @map("deleted_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  company  TalentProjectCompany @relation("CompanyCycles",  fields: [companyId], references: [id], onDelete: Cascade)
+  owner    User?                @relation("CycleOwner",     fields: [ownerId],   references: [id])
+  tasks    TalentCycleTask[]    @relation("CycleTasks")
+  awardees TalentAwardee[]      @relation("CycleAwardees")
+
+  @@index([companyId])
+  @@map("talent_project_cycles")
+}
+
+/// 申报周期待办任务
+model TalentCycleTask {
+  id          String   @id @default(cuid())
+  cycleId     String   @map("cycle_id")
+  content     String
+  isCompleted Boolean  @default(false) @map("is_completed")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  cycle TalentProjectCycle @relation("CycleTasks", fields: [cycleId], references: [id], onDelete: Cascade)
+
+  @@index([cycleId])
+  @@map("talent_cycle_tasks")
+}
+
+/// 申报周期入选人员名单
+model TalentAwardee {
+  id             String   @id @default(cuid())
+  cycleId        String   @map("cycle_id")
+  batch          String   @default("")          // 批次，如 "第一批"
+  name           String                          // 姓名
+  feishuOpenId   String?  @map("feishu_open_id") // 飞书 open_id，用于发起聊天
+  subsidy        Decimal? @db.Decimal(15, 2)     // 补贴金额（元，旧字段保留兼容）
+  approvedAmount Decimal? @db.Decimal(15, 2) @map("approved_amount") // 总核准金额（元）
+  status         String   @default("待确认")     // 待确认 / 已通过 / 已拨付
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  cycle         TalentProjectCycle @relation("CycleAwardees", fields: [cycleId], references: [id], onDelete: Cascade)
+  disbursements FundDisbursement[] @relation("AwardeeDisbursements")
+
+  @@index([cycleId])
+  @@map("talent_awardees")
+}
+
+/// 资金拨付流水（支持跨年分期）
+model FundDisbursement {
+  id           String    @id @default(cuid())
+  awardeeId    String    @map("awardee_id")
+  trancheName  String    @map("tranche_name")                        // 如"第一期/2024年度"
+  amount       Decimal   @db.Decimal(15, 2)                          // 本期金额（元）
+  expectedDate DateTime? @map("expected_date")                       // 预计到账时间
+  isReceived   Boolean   @default(false) @map("is_received")         // 是否已到账
+  receivedDate DateTime? @map("received_date")                       // 实际到账时间
+  remark       String?                                                // 备注
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  awardee TalentAwardee @relation("AwardeeDisbursements", fields: [awardeeId], references: [id], onDelete: Cascade)
+
+  @@index([awardeeId])
+  @@map("fund_disbursements")
+}
+
+// ── 落地协议月度数据（v2）───────────────────────────────────────────────────
+
+/// 月度数据录入：每个 (period, category) 对应一行，payload 存 JSON
+model AgreementData {
+  id          String    @id @default(cuid())
+  period      String    // "YYYY-MM"，如 "2024-06"
+  category    String    // finance / hr / ip
+  payload     Json      @default("{}")
+  submittedBy String?   @map("submitted_by")
+  lockedAt    DateTime? @map("locked_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@unique([period, category])
+  @@map("agreement_data")
+}
+
+/// 12 项质性履约义务
+model QualitativeObligation {
+  id           String   @id @default(cuid())
+  code         String   @unique
+  name         String
+  articleRef   String   @map("article_ref")
+  requirement  String   @db.Text
+  status       String   @default("pending")  // compliant / in_progress / pending / at_risk
+  description  String?  @db.Text
+  evidenceUrls Json     @default("[]") @map("evidence_urls")
+  updatedById  String?  @map("updated_by_id")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("qualitative_obligations")
+}
+
+/// 协议原件及相关附件（base64 存 DB）
+model AgreementFile {
+  id         String   @id @default(cuid())
+  name       String
+  url        String?
+  data       String?  @db.Text
+  size       Int?
+  mimeType   String?  @map("mime_type")
+  category   String   @default("other")  // contract / supplement / audit / report / other
+  year       Int?
+  remark     String?
+  uploadedBy String   @map("uploaded_by")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("agreement_files")
+}
