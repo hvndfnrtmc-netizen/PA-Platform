@@ -13,7 +13,7 @@ import {
   Tooltip as RechartTooltip, ResponsiveContainer, ReferenceLine,
   BarChart as RechartsBarChart, Cell,
 } from "recharts";
-import type { KpiActual } from "@/lib/agreement-config";
+import { fmtTargetValue, KPI_TARGET_MASKED, type KpiActual } from "@/lib/agreement-config";
 
 // ── 类型 ──────────────────────────────────────────────────────────
 
@@ -227,8 +227,8 @@ function YearEndPrediction({ kpi, year }: { kpi: KpiActual; year: number }) {
       </p>
       <p className="text-xs text-slate-500">
         {isOptimistic
-          ? `预计超出目标 ${diff.toFixed(2)} ${kpi.unit}`
-          : `差额 ${diff.toFixed(2)} ${kpi.unit}，建议加速推进`}
+          ? `预计超出目标 ${KPI_TARGET_MASKED ? "XX" : diff.toFixed(2)} ${kpi.unit}`
+          : `差额 ${KPI_TARGET_MASKED ? "XX" : diff.toFixed(2)} ${kpi.unit}，建议加速推进`}
       </p>
     </div>
   );
@@ -275,9 +275,10 @@ export default function BiDashboard() {
     ? buildTrendData(activeKpi, data.monthly, hrRows, ipRows, year)
     : [];
 
-  const fiveYearData = YEARS_LIST.map(y => ({
+  const fiveYearData = YEARS_LIST.map((y, i) => ({
     year: String(y),
-    target: data?.allYearTargets[activeKpi]?.[y] ?? 0,
+    // 脱敏模式下用线性占位高度（仅保持柱状图观感，不泄露真实目标值），tooltip 显示 XX
+    target: KPI_TARGET_MASKED ? (i + 2) * 10 : (data?.allYearTargets[activeKpi]?.[y] ?? 0),
   }));
 
   const compliant = data?.kpis.filter(k => k.status === "compliant").length ?? 0;
@@ -440,7 +441,7 @@ export default function BiDashboard() {
                 <span className="text-xs text-slate-400 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100">
                   {year}年目标：
                   <strong className="text-slate-700">
-                    {activeKpiData.target} {activeKpiData.unit}
+                    {fmtTargetValue(activeKpiData.target)} {activeKpiData.unit}
                   </strong>
                 </span>
               )}
@@ -492,7 +493,8 @@ export default function BiDashboard() {
                     strokeWidth={2.5}
                     dot={{ r: 3, fill: "#8b5cf6" }}
                   />
-                  {activeKpiData && (
+                  {/* 目标参考线：脱敏模式下隐藏（线高与标注都会泄露真实目标值） */}
+                  {activeKpiData && !KPI_TARGET_MASKED && (
                     <ReferenceLine
                       yAxisId="line"
                       y={activeKpiData.target}
@@ -545,7 +547,7 @@ export default function BiDashboard() {
                             ? String(kpi.actual)
                             : kpi.actual.toFixed(2)
                           : "—"}
-                        <span className="font-normal text-slate-400"> / {kpi.target} {kpi.unit}</span>
+                        <span className="font-normal text-slate-400"> / {fmtTargetValue(kpi.target)} {kpi.unit}</span>
                       </span>
                     </div>
                     <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
@@ -579,7 +581,7 @@ export default function BiDashboard() {
                     boxShadow: "0 2px 10px rgba(0,0,0,0.1)", fontSize: 11,
                   }}
                   formatter={(v: unknown) => [
-                    `${v} ${activeKpiData?.unit ?? ""}`, "年度目标",
+                    `${fmtTargetValue(typeof v === "number" ? v : String(v))} ${activeKpiData?.unit ?? ""}`, "年度目标",
                   ]}
                 />
                 <Bar dataKey="target" name="年度目标" radius={[3, 3, 0, 0]}>

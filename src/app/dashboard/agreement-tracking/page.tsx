@@ -8,7 +8,7 @@ import {
   Upload, X, ChevronDown, Loader2, Plus, Trash2, Download,
   Eye, RefreshCw, Database, Shield,
 } from "lucide-react";
-import type { KpiActual } from "@/lib/agreement-config";
+import { fmtTargetValue, KPI_TARGET_MASKED, type KpiActual } from "@/lib/agreement-config";
 
 // ── 类型 ────────────────────────────────────────────────────────────────────
 
@@ -323,7 +323,7 @@ function KpiTab({
                   {kpi.actual !== null ? fmtNum(kpi.actual, kpi.unit) : "---"}
                 </span>
                 <span className="text-xs text-slate-500 ml-1">
-                  {kpi.unit} / {kpi.target}
+                  {kpi.unit} / {fmtTargetValue(kpi.target)}
                 </span>
               </div>
 
@@ -348,9 +348,11 @@ function KpiTab({
               <span className="font-semibold text-slate-800 text-sm">{currentKpi.label} · 五年阶梯对赌</span>
               <span className="ml-2 text-xs text-slate-500">
                 五年合计目标：{
-                  currentKpi.unit === "亿元"
-                    ? Object.values(allYearTargets[currentKpi.key] ?? {}).reduce((a, b) => a + b, 0).toFixed(2)
-                    : String(Math.round(Object.values(allYearTargets[currentKpi.key] ?? {}).reduce((a, b) => a + b, 0)))
+                  fmtTargetValue(
+                    currentKpi.unit === "亿元"
+                      ? Object.values(allYearTargets[currentKpi.key] ?? {}).reduce((a, b) => a + b, 0).toFixed(2)
+                      : String(Math.round(Object.values(allYearTargets[currentKpi.key] ?? {}).reduce((a, b) => a + b, 0)))
+                  )
                 }{currentKpi.unit}
               </span>
             </div>
@@ -387,7 +389,7 @@ function KpiTab({
                         {actual !== null ? fmtNum(actual, currentKpi.unit) : "---"}
                       </strong>
                       {" / 目标 "}
-                      <strong className="text-slate-700">{target}{currentKpi.unit}</strong>
+                      <strong className="text-slate-700">{fmtTargetValue(target)}{currentKpi.unit}</strong>
                     </span>
                   </div>
 
@@ -402,7 +404,7 @@ function KpiTab({
                   {/* 当前年度差距提示 */}
                   {isCurrent && gap !== null && (
                     <p className="text-xs text-amber-600 bg-amber-50 px-2 py-1.5 rounded border border-amber-100">
-                      💡 还需 +{fmtNum(gap, currentKpi.unit)}{currentKpi.unit} 才能解锁100%全额补贴
+                      💡 还需 +{KPI_TARGET_MASKED ? "XX" : fmtNum(gap, currentKpi.unit)}{currentKpi.unit} 才能解锁100%全额补贴
                     </p>
                   )}
                 </div>
@@ -1032,7 +1034,7 @@ export default function AgreementTrackingPage() {
                     <div className="flex justify-between text-sm mb-1">
                       <span>
                         实际：{kpi.actual !== null ? fmtNum(kpi.actual, kpi.unit) : 0}{kpi.unit}
-                        {" / 目标："}{kpi.target}{kpi.unit}
+                        {" / 目标："}{fmtTargetValue(kpi.target)}{kpi.unit}
                       </span>
                       <span className="font-bold">{rawPct.toFixed(1)}%</span>
                     </div>

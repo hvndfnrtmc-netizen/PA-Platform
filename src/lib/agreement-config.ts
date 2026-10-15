@@ -3,6 +3,17 @@
  * 数据来源：苏州高新区与 瑞启深空 落地协议（2026-2028）
  */
 
+/**
+ * 演示脱敏开关：true 时界面上所有 KPI 目标值显示为 "XX"。
+ * 内部计算（完成率 / 差距 / 状态）仍使用真实 targets，仅展示层打码。
+ */
+export const KPI_TARGET_MASKED = true;
+
+/** 展示层专用：脱敏开关打开时返回 "XX"，否则返回原值字符串 */
+export function fmtTargetValue(v: string | number): string {
+  return KPI_TARGET_MASKED ? "XX" : String(v);
+}
+
 export const KPI_KEYS = [
   "REVENUE",
   "TAX_TOTAL",
