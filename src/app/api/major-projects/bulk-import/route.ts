@@ -75,6 +75,10 @@ async function upsertMilestonesAndKPIs(
 const BUCKET = "major-project-files";
 
 function getProjectRef(): string {
+  // 优先从 SUPABASE_URL 解析，兼容非 Supabase 数据库（如 Neon）
+  const supabaseUrl = process.env.SUPABASE_URL ?? "";
+  const m1 = supabaseUrl.match(/https:\/\/([a-z0-9]+)\.supabase\.co/);
+  if (m1) return m1[1];
   const url   = process.env.DATABASE_URL ?? "";
   const match = url.match(/postgres\.([a-z0-9]+):/);
   return match?.[1] ?? "";

@@ -12,8 +12,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 
-/** 从 DATABASE_URL 中提取 Supabase 项目 ID */
+/** 提取 Supabase 项目 ID：优先从 SUPABASE_URL 解析，兼容非 Supabase 数据库（如 Neon） */
 function getProjectRef(): string {
+  const supabaseUrl = process.env.SUPABASE_URL ?? "";
+  const m1 = supabaseUrl.match(/https:\/\/([a-z0-9]+)\.supabase\.co/);
+  if (m1) return m1[1];
   const url   = process.env.DATABASE_URL ?? "";
   const match = url.match(/postgres\.([a-z0-9]+):/);
   return match?.[1] ?? "";
