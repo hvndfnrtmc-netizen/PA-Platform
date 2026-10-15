@@ -30,15 +30,9 @@ interface DashboardData {
 }
 
 interface MonthlyPoint {
-  period:  string;
-  revenue: number;
-  vatPaid: number;
-  pitPaid: number;
-}
-
-interface MonthlyRow {
-  period:  string;
-  payload: Record<string, number | null>;
+  period:            string;
+  revenue:           number;
+  localContribution: number;
 }
 
 // ── 辅助函数 ──────────────────────────────────────────────────────
@@ -56,8 +50,6 @@ function kpiColor(status: KpiActual["status"]): string {
 function buildTrendData(
   kpiKey:  string,
   monthly: MonthlyPoint[],
-  hrRows:  MonthlyRow[],
-  ipRows:  MonthlyRow[],
   year:    number,
 ): { month: string; increment: number; cumulative: number }[] {
   const months = Array.from({ length: 12 }, (_, i) =>
@@ -68,26 +60,8 @@ function buildTrendData(
     switch (kpiKey) {
       case "REVENUE":
         return monthly.find(m => m.period === period)?.revenue ?? 0;
-      case "TAX_TOTAL":
-        return monthly.find(m => m.period === period)?.vatPaid ?? 0;
-      case "PERSONAL_TAX":
-        return monthly.find(m => m.period === period)?.pitPaid ?? 0;
-      case "SOCIAL_INSURANCE": {
-        const r = hrRows.find(r => r.period === period);
-        return (r?.payload?.social_ins as number | null) ?? 0;
-      }
-      case "NATIONAL_TALENT": {
-        const r = hrRows.find(r => r.period === period);
-        return (r?.payload?.core_rd as number | null) ?? 0;
-      }
-      case "INDUSTRY_CHAIN": {
-        const r = hrRows.find(r => r.period === period);
-        return (r?.payload?.partners as number | null) ?? 0;
-      }
-      case "INVENTION_PATENT": {
-        const r = ipRows.find(r => r.period === period);
-        return (r?.payload?.inv_app as number | null) ?? 0;
-      }
+      case "LOCAL_CONTRIBUTION":
+        return monthly.find(m => m.period === period)?.localContribution ?? 0;
       default:
         return 0;
     }
@@ -236,33 +210,27 @@ function YearEndPrediction({ kpi, year }: { kpi: KpiActual; year: number }) {
 
 // ── 主组件 ────────────────────────────────────────────────────────
 
-const YEARS_LIST = [2026, 2027, 2028];
+const YEARS_LIST = [2026, 2027, 2028, 2029, 2030];
 
 const MILESTONES = [
-  { year: 2026, label: "规模扩张期" },
-  { year: 2027, label: "高速发展期" },
-  { year: 2028, label: "IPO 目标截止" },
+  { year: 2026, label: "起步发展期" },
+  { year: 2027, label: "规模扩张期" },
+  { year: 2028, label: "高速发展期" },
+  { year: 2029, label: "上市冲刺期" },
+  { year: 2030, label: "目标达产期" },
 ];
 
 export default function BiDashboard() {
   const [year, setYear]         = useState(() => new Date().getFullYear());
   const [data, setData]         = useState<DashboardData | null>(null);
-  const [hrRows, setHrRows]     = useState<MonthlyRow[]>([]);
-  const [ipRows, setIpRows]     = useState<MonthlyRow[]>([]);
   const [activeKpi, setActiveKpi] = useState("REVENUE");
   const [loading, setLoading]   = useState(true);
 
   const loadAll = useCallback(async (y: number) => {
     setLoading(true);
     try {
-      const [dashRes, hrRes, ipRes] = await Promise.all([
-        fetch(`/api/agreement/dashboard?year=${y}`),
-        fetch(`/api/agreement/data?year=${y}&category=hr`),
-        fetch(`/api/agreement/data?year=${y}&category=ip`),
-      ]);
+      const dashRes = await fetch(`/api/agreement/dashboard?year=${y}`);
       if (dashRes.ok) setData(await dashRes.json() as DashboardData);
-      if (hrRes.ok) setHrRows(await hrRes.json() as MonthlyRow[]);
-      if (ipRes.ok) setIpRows(await ipRes.json() as MonthlyRow[]);
     } catch { /* 静默失败 */ }
     finally { setLoading(false); }
   }, []);
@@ -272,7 +240,7 @@ export default function BiDashboard() {
   const activeKpiData = data?.kpis.find(k => k.key === activeKpi) ?? null;
 
   const trendData = data
-    ? buildTrendData(activeKpi, data.monthly, hrRows, ipRows, year)
+    ? buildTrendData(activeKpi, data.monthly, year)
     : [];
 
   const fiveYearData = YEARS_LIST.map((y, i) => ({
@@ -412,7 +380,7 @@ export default function BiDashboard() {
         {/* ═══ 中栏 col-span-6 ═══════════════════════════════════ */}
         <div className="col-span-12 lg:col-span-6 flex flex-col gap-4">
 
-          {/* 7 个 KPI 微型圆环联动控制台 */}
+          {/* 2 个 KPI 微型圆环联动控制台 */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-4">
               KPI 完成率一览 · 点击切换趋势图

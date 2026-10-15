@@ -52,8 +52,8 @@ const DEFAULT_TABS: TabDef[] = [
 
 const DEFAULT_FIELDS: Record<string, FieldDef[]> = {
   finance: [
-    { key: "revenue",      label: "营业收入",                    unit: "亿元" },
-    { key: "suzhou_rev",   label: "其中：境内销售收入确认在苏州",  unit: "亿元" },
+    { key: "revenue",      label: "营业收入",                    unit: "万元" },
+    { key: "suzhou_rev",   label: "其中：境内销售收入确认在苏州",  unit: "万元" },
     { key: "vat",          label: "增值税_本月实缴苏州",           unit: "万元" },
     { key: "corp_tax",     label: "企业所得税_本月实缴苏州",       unit: "万元" },
     { key: "personal_tax", label: "个人所得税_苏州代扣",           unit: "万元" },

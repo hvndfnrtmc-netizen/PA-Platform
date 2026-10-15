@@ -24,14 +24,12 @@ export async function GET(req: NextRequest) {
     req.nextUrl.searchParams.get("year") ?? String(new Date().getFullYear()),
   );
 
-  const [financeRows, hrRows, ipRows, qualRows] = await Promise.all([
+  const [financeRows, qualRows] = await Promise.all([
     prisma.agreementData.findMany({ where: { category: "finance" } }),
-    prisma.agreementData.findMany({ where: { category: "hr" } }),
-    prisma.agreementData.findMany({ where: { category: "ip" } }),
     prisma.qualitativeObligation.findMany({ orderBy: { createdAt: "asc" } }),
   ]);
 
-  const kpis         = computeKpiActuals(year, financeRows, hrRows, ipRows);
+  const kpis         = computeKpiActuals(year, financeRows);
   const overallScore = computeCompositeScore(kpis);
 
   // 距年末考核截止日天数
@@ -51,16 +49,18 @@ export async function GET(req: NextRequest) {
   }
 
   // 当年各月 finance 数据（趋势图用）
+  // revenue 单位：万元；localContribution 单位：万元
   const monthly = financeRows
     .filter(r => r.period.startsWith(String(year)))
     .sort((a, b) => a.period.localeCompare(b.period))
     .map(r => {
       const p = (typeof r.payload === "object" && r.payload !== null ? r.payload : {}) as Record<string, number>;
+      const localYuan = (p.vatPaidSuzhou ?? 0) + (p.citPaidSuzhou ?? 0);
+      const localWan  = (p.vat ?? 0) + (p.corp_tax ?? 0);
       return {
-        period:  r.period,
-        revenue: p.revenue ?? 0,
-        vatPaid: ((p.vatPaidSuzhou ?? 0) + (p.citPaidSuzhou ?? 0)) / 10000,
-        pitPaid: (p.pitSuzhou ?? 0) / 10000,
+        period:            r.period,
+        revenue:           p.revenue ?? 0,
+        localContribution: localWan > 0 || (p.vat != null || p.corp_tax != null) ? localWan : localYuan / 10000,
       };
     });
 

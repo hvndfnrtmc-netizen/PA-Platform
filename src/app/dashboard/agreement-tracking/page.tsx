@@ -77,7 +77,7 @@ const FILE_CATEGORIES = [
   { value: "other",      label: "其他" },
 ];
 
-const YEARS = [2026, 2027, 2028];
+const YEARS = [2026, 2027, 2028, 2029, 2030];
 
 function statusMeta(v: string) {
   return STATUS_OPTIONS.find(s => s.value === v) ?? STATUS_OPTIONS[0];
@@ -92,7 +92,7 @@ function kpiStatusMeta(status: KpiActual["status"]) {
 
 function fmtNum(v: number | null, unit: string) {
   if (v === null) return "—";
-  if (unit === "亿元") return v.toFixed(2);
+  if (unit === "亿元" || unit === "万元") return v.toFixed(2);
   return String(Math.round(v));
 }
 
@@ -136,7 +136,7 @@ function DataEntryModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [activeTab, setActiveTab] = useState<"finance" | "hr" | "ip">("finance");
+  const [activeTab] = useState<"finance">("finance");
   const [period, setPeriod] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -170,22 +170,12 @@ function DataEntryModal({
   }
 
   const FINANCE_FIELDS: { key: keyof MonthlyPayload; label: string; unit: string; hint?: string }[] = [
-    { key: "revenue",       label: "营业收入",       unit: "亿元", hint: "苏州主体当月营业收入" },
+    { key: "revenue",       label: "营业收入",       unit: "万元", hint: "苏州主体当月营业收入（万元）" },
     { key: "vatPaidSuzhou", label: "增值税实缴",     unit: "元",   hint: "当月实际缴纳增值税（元）" },
     { key: "citPaidSuzhou", label: "企业所得税实缴", unit: "元",   hint: "当月实际缴纳企业所得税（元）" },
-    { key: "pitSuzhou",     label: "个人所得税代扣", unit: "元",   hint: "当月代扣代缴个税（元）" },
-  ];
-  const HR_FIELDS: { key: keyof MonthlyPayload; label: string; unit: string; hint?: string }[] = [
-    { key: "socialInsuranceCount", label: "社保缴纳人数",     unit: "人", hint: "月末在册社保人数" },
-    { key: "nationalTalentCount",  label: "国家级人才计划",   unit: "人", hint: "已申报/认定人数（累计）" },
-    { key: "industryChainCount",   label: "产业链引培企业",   unit: "家", hint: "已落户苏州企业数（累计）" },
-    { key: "coreStaffCount",       label: "核心岗位劳动关系", unit: "人", hint: "与苏州法人签署劳动合同人数" },
-  ];
-  const IP_FIELDS: { key: keyof MonthlyPayload; label: string; unit: string; hint?: string }[] = [
-    { key: "inventionPatentApplied", label: "发明专利申请量", unit: "件", hint: "累计已申请件数" },
   ];
 
-  const CURRENT_FIELDS = activeTab === "finance" ? FINANCE_FIELDS : activeTab === "hr" ? HR_FIELDS : IP_FIELDS;
+  const CURRENT_FIELDS = FINANCE_FIELDS;
 
   return (
     <div
@@ -213,23 +203,6 @@ function DataEntryModal({
             onChange={e => setPeriod(e.target.value)}
             className="w-full px-3 py-2 rounded-lg text-sm bg-slate-50 border border-slate-200 text-slate-800 outline-none focus:ring-2 focus:ring-blue-200"
           />
-        </div>
-
-        {/* tabs */}
-        <div className="px-6 pt-4 flex gap-2">
-          {(["finance", "hr", "ip"] as const).map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-1.5 rounded-full text-xs font-medium transition-colors border ${
-                activeTab === tab
-                  ? "bg-blue-50 border-blue-200 text-blue-700"
-                  : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
-              }`}
-            >
-              {tab === "finance" ? "财税" : tab === "hr" ? "人才社保" : "知识产权"}
-            </button>
-          ))}
         </div>
 
         {/* fields */}
@@ -293,7 +266,7 @@ function KpiTab({
   return (
     <>
       {/* KPI 卡片网格（单行极简） */}
-      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         {kpis.map(kpi => {
           const meta     = kpiStatusMeta(kpi.status);
           const pctDisp  = kpi.pct !== null ? Math.min(kpi.pct * 100, 100) : 0;
@@ -896,7 +869,7 @@ export default function AgreementTrackingPage() {
                     <span className="text-xs font-medium text-emerald-700">全额达标</span>
                   </div>
                   <span className="text-2xl font-bold text-emerald-700">{kpiStatusCount.compliant}</span>
-                  <span className="text-xs text-emerald-500 ml-1">/ 7 项</span>
+                  <span className="text-xs text-emerald-500 ml-1">/ 2 项</span>
                 </div>
                 <div
                   className="p-4 rounded-xl bg-amber-50 border border-amber-100 cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
@@ -907,7 +880,7 @@ export default function AgreementTrackingPage() {
                     <span className="text-xs font-medium text-amber-700">打折区间</span>
                   </div>
                   <span className="text-2xl font-bold text-amber-700">{kpiStatusCount.warning}</span>
-                  <span className="text-xs text-amber-500 ml-1">/ 7 项</span>
+                  <span className="text-xs text-amber-500 ml-1">/ 2 项</span>
                 </div>
                 <div
                   className="p-4 rounded-xl bg-red-50 border border-red-100 cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
@@ -918,7 +891,7 @@ export default function AgreementTrackingPage() {
                     <span className="text-xs font-medium text-red-700">危险区间</span>
                   </div>
                   <span className="text-2xl font-bold text-red-700">{kpiStatusCount.risk}</span>
-                  <span className="text-xs text-red-500 ml-1">/ 7 项</span>
+                  <span className="text-xs text-red-500 ml-1">/ 2 项</span>
                 </div>
                 <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
                   <div className="flex items-center gap-2 mb-1">
