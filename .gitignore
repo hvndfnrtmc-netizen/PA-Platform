@@ -79,3 +79,4 @@ next-env.d.ts
 /migrate-to-neon.bat
 /pg-dump-*.sql
 /pg-dump-*.dump
+/vercel-secrets.txt
