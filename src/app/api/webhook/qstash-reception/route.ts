@@ -88,6 +88,17 @@ async function handler(req: NextRequest) {
   });
 }
 
-// 使用 verifySignatureAppRouter 包裹 handler，自动验证 QStash 签名
-// SDK 会自动读取 QSTASH_CURRENT_SIGNING_KEY 和 QSTASH_NEXT_SIGNING_KEY
-export const POST = verifySignatureAppRouter(handler);
+// 使用 verifySignatureAppRouter 包裹 handler，自动验证 QStash 签名。
+// ⚠️ 必须懒初始化：verifySignatureAppRouter 在模块加载阶段就会读取
+//    QSTASH_CURRENT_SIGNING_KEY / QSTASH_NEXT_SIGNING_KEY，若在顶层执行，
+//    next build 收集页面数据时（未配置该 env）会直接抛错导致构建失败。
+let _verifiedHandler: ((req: NextRequest) => Promise<Response>) | null = null;
+
+export async function POST(req: NextRequest) {
+  if (!_verifiedHandler) {
+    _verifiedHandler = verifySignatureAppRouter(handler) as (
+      req: NextRequest,
+    ) => Promise<Response>;
+  }
+  return _verifiedHandler(req);
+}
