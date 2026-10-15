@@ -20,7 +20,7 @@ const PUBLIC_DEFAULTS: Record<string, { value: string; description: string }> = 
     description: "重大项目页面副标题",
   },
   platform_name: {
-    value:       "Momenta LPA 平台",
+    value:       "瑞启深空 PA 平台",
     description: "侧边栏顶部的平台名称",
   },
   external_report_subtitle: {

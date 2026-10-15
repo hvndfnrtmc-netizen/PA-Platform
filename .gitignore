@@ -59,3 +59,18 @@ next-env.d.ts
 .env.production.local
 
 .vercel
+
+# --- local-only files (added 2026-10-15, cloud deploy prep) ---
+# 本地日志与备份，不进仓库
+/logs/
+*.bak
+*.orig
+
+# 本机专用文件（含本机绝对路径 / 主机名），不进仓库
+/oracle-ssh-public-key.txt
+/oracle-cloud-setup-guide.md
+/start-dev.bat
+/start-pa-platform.bat
+/setup-autostart.ps1
+/t99.txt
+/card_content.txt

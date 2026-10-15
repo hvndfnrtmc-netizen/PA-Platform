@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 
 const PAGE_TITLES: Record<string, string> = {
-  "/dashboard/reception":          "政府接待",
+  "/dashboard/reception":          "会议接待",
   "/dashboard/major-projects":     "重大项目",
   "/dashboard/awards":             "荣誉资质",
   "/dashboard/talent":             "人才福利",
@@ -22,7 +22,7 @@ const PAGE_TITLES: Record<string, string> = {
 };
 
 const NAV_LINKS = [
-  { href: "/dashboard/reception",          label: "政府接待" },
+  { href: "/dashboard/reception",          label: "会议接待" },
   { href: "/dashboard/major-projects",     label: "重大项目" },
   { href: "/dashboard/awards",             label: "荣誉资质" },
   { href: "/dashboard/talent",             label: "人才福利" },

@@ -74,7 +74,7 @@ export default function LoginPage() {
               <path d="M6 26V6l10 6 10-6v20l-10-6-10 6z" stroke="white" strokeWidth="2" strokeLinejoin="round" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Momenta LPA</h1>
+          <h1 className="text-2xl font-bold text-white tracking-tight">瑞启深空 PA</h1>
           <p className="text-sm mt-1" style={{ color: "#64748b" }}>政企数据协同与智库平台</p>
         </div>
 
@@ -150,7 +150,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center mt-6 text-xs" style={{ color: "#334155" }}>
-          © 2025 Momenta Inc. · 仅限内部使用 · 所有操作均被审计记录
+          © 2025 瑞启深空 Inc. · 仅限内部使用 · 所有操作均被审计记录
         </p>
       </div>
     </div>

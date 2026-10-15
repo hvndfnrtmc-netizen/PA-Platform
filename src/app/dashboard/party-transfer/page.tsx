@@ -2,8 +2,8 @@
  * Party Transfer 主页面（Server Component）
  *
  * 角色路由：
- *  - SUPER_ADMIN → AdminView（双 Tab：审批工作台 + 我的申请）
- *  - 其他角色   → UserTransferPortal（员工提交端）
+ *  - 审批侧（SUPER_ADMIN 或 hasPartyAdminAccess）→ AdminView（双 Tab：审批工作台 + 我的申请）
+ *  - 其余已授权用户                               → UserTransferPortal（员工提交端）
  *
  * 任务一（Hydration 闭环）：
  *  服务端预取当前用户最新记录，作为 initialData 传给客户端组件，
@@ -16,14 +16,19 @@ export const revalidate = 0;
 
 import { getSession } from "@/lib/auth";
 import prisma         from "@/lib/prisma";
+import { getPartyAccess } from "@/lib/party-auth";
 import UserTransferPortal from "./components/UserTransferPortal";
 import AdminView          from "./components/AdminView";
 
 export default async function PartyTransferPage() {
-  const session      = await getSession();
-  const isSuperAdmin = session?.user?.role === "SUPER_ADMIN";
+  const session = await getSession();
 
-  if (isSuperAdmin) {
+  // 审批侧路由：SUPER_ADMIN 或持有 hasPartyAdminAccess 的账号
+  const access = session?.user
+    ? await getPartyAccess({ userId: session.user.id, role: session.user.role })
+    : { isAdmin: false, canAccessModule: false };
+
+  if (access.isAdmin) {
     return <AdminView />;
   }
 

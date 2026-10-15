@@ -73,7 +73,7 @@ function buildAdminOrderCard(
     config: { wide_screen_mode: true },
     header: {
       template: "orange",
-      title:    { content: `🛎️ 【${meetingTime || "待确认"}】重要政府接待`, tag: "plain_text" },
+      title:    { content: `🛎️ 【${meetingTime || "待确认"}】重要会议接待`, tag: "plain_text" },
     },
     body: { elements },
   };

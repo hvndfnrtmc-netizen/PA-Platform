@@ -4,217 +4,17 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
+import { LogOut, ChevronRight, ChevronLeft, Bell, Shield, Inbox } from "lucide-react";
 import {
-  ClipboardList, Database, FileText, Settings, LogOut,
-  ChevronRight, ChevronLeft, Bell, Shield, Award,
-  Inbox, Sparkles, Star, ScrollText, Gift, Briefcase, Building2, Flag, GraduationCap,
-} from "lucide-react";
-
-// ──────────────────────────────────────────────
-// 类型定义
-// ──────────────────────────────────────────────
-
-interface NavItem {
-  label:            string;
-  href:             string;
-  icon:             React.ElementType;
-  description:      string;
-  superAdminOnly?:  boolean;
-  paOnly?:          boolean;
-  deptContactOnly?: boolean;
-  allRoles?:           boolean;
-  moduleKey?:          string;
-  moduleId?:           string;
-  /** 渲染到侧边栏最底部（通过 mt-auto 分隔区实现） */
-  bottomAnchor?:       boolean;
-  /**
-   * 需要个人白名单授权才可见。
-   * SUPER_ADMIN 无条件放行；其他角色需 hasPartyModuleAccess === true。
-   */
-  requiresPartyAccess?: boolean;
-}
-
-// ──────────────────────────────────────────────
-// 导航项配置（顺序严格按需求文档，href 完全保留原值）
-// ──────────────────────────────────────────────
-
-const ALL_NAV_ITEMS: NavItem[] = [
-  // ── PA 主菜单 ──────────────────────────────
-  {
-    label:       "重大项目",
-    href:        "/dashboard/major-projects",
-    icon:        Flag,
-    description: "重大项目管理与跟踪",
-    moduleId:    "major-projects",
-    paOnly:      true,
-  },
-  {
-    label:       "荣誉资质",
-    href:        "/dashboard/awards",
-    icon:        Award,
-    description: "企业资质认证与荣誉",
-    paOnly:      true,
-    moduleId:    "awards",
-    moduleKey:   "awards",
-  },
-  {
-    label:       "人才福利",
-    href:        "/dashboard/talent",
-    icon:        Gift,
-    description: "人才引进与福利管理",
-    moduleId:    "talent",
-    paOnly:      true,
-  },
-  {
-    label:       "人才申报",
-    href:        "/dashboard/talent-declaration",
-    icon:        GraduationCap,
-    description: "人才项目申报导航大厅",
-    moduleId:    "talent-declaration",
-    paOnly:      true,
-  },
-  {
-    label:       "政府接待",
-    href:        "/dashboard/reception",
-    icon:        Briefcase,
-    description: "政府来访接待管理",
-    moduleId:    "reception",
-    paOnly:      true,
-  },
-  {
-    label:       "ODC",
-    href:        "/dashboard/odc",
-    icon:        Building2,
-    description: "ODC 管理与协同",
-    moduleId:    "odc",
-    paOnly:      true,
-  },
-  {
-    label:       "对外填报",
-    href:        "/dashboard/tasks",
-    icon:        ClipboardList,
-    description: "任务派发与红绿灯看板",
-    moduleId:    "tasks",
-    paOnly:      true,
-  },
-  {
-    label:       "落地协议",
-    href:        "/dashboard/agreement-tracking",
-    icon:        ScrollText,
-    description: "政企落地协议进度追踪",
-    moduleId:    "agreement-tracking",
-    paOnly:      true,
-  },
-  {
-    label:               "党员关系",
-    href:                "/dashboard/party-transfer",
-    icon:                Star,
-    description:         "党组织关系转入 / 转出办理",
-    requiresPartyAccess: true,
-  },
-  {
-    label:       "公文生成",
-    href:        "/dashboard/documents",
-    icon:        FileText,
-    description: "Word 占位符一键渲染",
-    moduleId:    "documents",
-    paOnly:      true,
-  },
-  {
-    label:       "智库chat",
-    href:        "/dashboard/copilot",
-    icon:        Sparkles,
-    description: "RAG 驱动的数据问答助手",
-    moduleId:    "copilot",
-    paOnly:      true,
-  },
-  {
-    label:       "数据中台",
-    href:        "/dashboard/assets",
-    icon:        Database,
-    description: "核心指标汇聚与溯源",
-    moduleId:    "assets",
-    paOnly:      true,
-  },
-  // ── 底部锚定（超级后台，mt-auto 与其余菜单保持间距） ──
-  {
-    label:          "超级后台",
-    href:           "/dashboard/settings",
-    icon:           Settings,
-    description:    "组织架构与权限配置",
-    paOnly:         true,
-    superAdminOnly: true,
-    bottomAnchor:   true,
-  },
-
-  // ── 业务部门专属 ─────────────────────────────
-  {
-    label:           "部门数据录入",
-    href:            "/dashboard/my-tasks",
-    icon:            Inbox,
-    description:     "我的填报任务工作台",
-    deptContactOnly: true,
-  },
-];
-
-// ──────────────────────────────────────────────
-// 权限过滤
-// ──────────────────────────────────────────────
-
-function getNavItems(
-  role: string,
-  grantedModules: string[] = [],
-  hasPartyModuleAccess = false,
-  feishuAuthorizedModules: string[] | null = null,
-): NavItem[] {
-  // SUPER_ADMIN 对党员关系始终放行
-  const partyOk = role === "SUPER_ADMIN" || hasPartyModuleAccess;
-
-  if (role === "SUPER_ADMIN") {
-    // SUPER_ADMIN 可见全部非 deptContactOnly 条目（含 requiresPartyAccess）
-    return ALL_NAV_ITEMS.filter((i) => !i.deptContactOnly);
-  }
-
-  // 若有 FeishuNotificationTarget 授权记录，以此为准过滤（PA_SPECIALIST）
-  if (role === "PA_SPECIALIST" && feishuAuthorizedModules !== null) {
-    const hasAll = feishuAuthorizedModules.includes("all");
-    return ALL_NAV_ITEMS.filter((i) => {
-      if (i.superAdminOnly) return false;
-      if (i.deptContactOnly) return false;
-      if (i.requiresPartyAccess) return partyOk;
-      if (!i.moduleId) return true; // 无 moduleId 的项目默认可见
-      return hasAll || feishuAuthorizedModules.includes(i.moduleId);
-    });
-  }
-
-  if (role === "DEPT_CONTACT") {
-    return ALL_NAV_ITEMS.filter(
-      (i) =>
-        i.deptContactOnly ||
-        (i.allRoles && !i.requiresPartyAccess) ||
-        (i.requiresPartyAccess && partyOk) ||
-        (i.moduleKey && grantedModules.includes(i.moduleKey))
-    );
-  }
-
-  // PA_SPECIALIST 无 FeishuNotificationTarget 记录时回退到旧行为
-  return ALL_NAV_ITEMS.filter(
-    (i) =>
-      (i.allRoles && !i.requiresPartyAccess) ||
-      (i.requiresPartyAccess && partyOk) ||
-      (i.paOnly && !i.superAdminOnly)
-  );
-}
-
-// ──────────────────────────────────────────────
-// 角色标签
-// ──────────────────────────────────────────────
-
-const ROLE_LABEL: Record<string, string> = {
-  SUPER_ADMIN:   "超级管理员",
-  PA_SPECIALIST: "LPA 专员",
-  DEPT_CONTACT:  "部门对接人",
-};
+  type NavItem,
+  getNavItems,
+  ROLE_LABEL,
+} from "@/lib/nav-items";
+import {
+  type SidebarConfig,
+  DEFAULT_SIDEBAR_CONFIG,
+  applySidebarConfig,
+} from "@/lib/sidebar-config";
 
 // ──────────────────────────────────────────────
 // 单个导航链接（含折叠 Tooltip）
@@ -306,6 +106,13 @@ interface SidebarProps {
   hasPartyModuleAccess?: boolean;
   /** FeishuNotificationTarget 模块授权列表（null = 无记录，按旧逻辑处理） */
   feishuAuthorizedModules?: string[] | null;
+  /** 当前登录账号邮箱（账号级白名单按邮箱匹配） */
+  userEmail?:            string;
+  /**
+   * 由 layout.tsx 从 system_configs 读取后注入的侧边栏显示配置。
+   * 缺省时不做任何额外过滤，行为与改造前完全一致。
+   */
+  sidebarConfig?:        SidebarConfig | null;
 }
 
 export function Sidebar({
@@ -316,10 +123,12 @@ export function Sidebar({
   grantedModuleKeys = [],
   hasPartyModuleAccess = false,
   feishuAuthorizedModules = null,
+  userEmail,
+  sidebarConfig = null,
 }: SidebarProps) {
   const [collapsed,     setCollapsed]     = useState(false);
   // 动态平台名称，fallback 确保任何情况下都不会出现空白
-  const [platformName, setPlatformName] = useState("Momenta LPA");
+  const [platformName, setPlatformName] = useState("瑞启深空 PA");
 
   useEffect(() => {
     fetch("/api/system-config/platform_name")
@@ -331,7 +140,14 @@ export function Sidebar({
   }, []);
 
   const pathname      = usePathname();
-  const navItems      = getNavItems(userRole, grantedModuleKeys, hasPartyModuleAccess, feishuAuthorizedModules);
+  // 第一层：角色 + 模块授权（与改造前完全一致的原有逻辑）
+  const roleItems     = getNavItems(userRole, grantedModuleKeys, hasPartyModuleAccess, feishuAuthorizedModules);
+  // 第二层：超级后台「侧边栏菜单」配置（全局隐藏 / 角色范围 / 账号白名单）
+  const navItems      = applySidebarConfig(
+    roleItems,
+    sidebarConfig ?? DEFAULT_SIDEBAR_CONFIG,
+    { role: userRole, email: userEmail },
+  );
   const isDeptContact = userRole === "DEPT_CONTACT";
 
   // 分离底部锚定项（超级后台）与普通导航项
@@ -355,7 +171,7 @@ export function Sidebar({
         className={`flex items-center gap-3 py-4 flex-shrink-0${collapsed ? " px-3 justify-between" : " px-4"}`}
         style={{ borderBottom: "1px solid #1e2d45" }}
       >
-        {/* Momenta Logo 图标 */}
+        {/* 瑞启深空 Logo 图标 */}
         <div
           className="flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0"
           style={{ background: "linear-gradient(135deg, #2563eb, #06b6d4)" }}
@@ -390,6 +206,7 @@ export function Sidebar({
           onMouseEnter={(e) => (e.currentTarget.style.background = "#1a2944")}
           onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
           title={collapsed ? "展开侧边栏" : "收起侧边栏"}
+          data-allow-readonly="true"
         >
           {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
@@ -511,6 +328,7 @@ export function Sidebar({
                 onMouseEnter={(e) => (e.currentTarget.style.background = "#334155")}
                 onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                 title="退出登录"
+                data-allow-readonly="true"
               >
                 <LogOut size={14} />
               </button>

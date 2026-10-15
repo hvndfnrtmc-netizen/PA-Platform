@@ -22,7 +22,7 @@ function getIp(req: NextRequest) {
 const DEFAULT_CONFIGS = [
   {
     key:         "platform_name",
-    value:       "Momenta LPA 平台",
+    value:       "瑞启深空 PA 平台",
     description: "侧边栏顶部的平台名称",
   },
   {

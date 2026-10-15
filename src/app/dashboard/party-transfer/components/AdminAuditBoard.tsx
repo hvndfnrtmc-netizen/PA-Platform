@@ -103,7 +103,7 @@ function MaterialDrawer({
     "实体档案材料已全部核对并入库",
     "党员信息已录入全国党员管理系统",
     "党费缴纳基数及标准已核定",
-    "确认该同志已加入 Momenta 党员飞书群",
+    "确认该同志已加入 瑞启深空 党员飞书群",
   ] as const;
   const [archiveChecks, setArchiveChecks] = useState<Record<string, boolean>>({});
   const allArchiveChecked = ARCHIVE_CHECKLIST.every(item => archiveChecks[item]);

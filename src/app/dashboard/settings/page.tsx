@@ -2,7 +2,7 @@
 
 /**
  * /dashboard/settings — 超级管理员后台
- * Tab：组织与人员 | 模板配置 | 审计日志 | 系统文案配置
+ * Tab：组织与人员 | 侧边栏菜单 | 模板配置 | 审计日志 | 系统文案配置 | 飞书通知配置
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -12,8 +12,16 @@ import {
   Loader2, RefreshCw, X, ChevronLeft, ChevronRight,
   Search, FileText, Save, ExternalLink, CheckCircle2,
   Bell, MessageSquare, User, Settings, ChevronDown, ChevronUp, UserPlus,
+  LayoutList, Eye, EyeOff, RotateCcw,
 } from "lucide-react";
 import FeishuChatLink from "@/components/FeishuChatLink";
+import {
+  ALL_NAV_ITEMS, CONFIG_ROLES, ROLE_LABEL, getNavItems, navKey,
+} from "@/lib/nav-items";
+import {
+  type SidebarConfig,
+  DEFAULT_SIDEBAR_CONFIG,
+} from "@/lib/sidebar-config";
 
 // ── 类型 ──────────────────────────────────────────────────────
 
@@ -56,12 +64,13 @@ interface AuditLog {
 
 const ROLE_CFG: Record<string, { label: string; color: string; bg: string }> = {
   SUPER_ADMIN:   { label: "超级管理员", color: "#ef4444", bg: "rgba(239,68,68,0.1)"  },
-  PA_SPECIALIST: { label: "LPA 专员",   color: "#2563eb", bg: "rgba(37,99,235,0.1)"  },
+  PA_SPECIALIST: { label: "PA 专员",   color: "#2563eb", bg: "rgba(37,99,235,0.1)"  },
   DEPT_CONTACT:  { label: "部门对接人", color: "#64748b", bg: "rgba(100,116,139,0.1)"},
 };
 
 const TABS = [
   { key: "org",             label: "组织与人员",   icon: Building2  },
+  { key: "sidebar",         label: "侧边栏菜单",   icon: LayoutList },
   { key: "template",        label: "模板配置",     icon: Settings2  },
   { key: "audit",           label: "审计日志",     icon: ScrollText },
   { key: "config",          label: "系统文案配置", icon: FileText   },
@@ -417,7 +426,7 @@ function UserFormModal({ departments, onClose, onSaved }: { departments: Departm
             <select value={role} onChange={(e) => setRole(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl text-sm bg-white outline-none" style={{ border: "1px solid #e2e8f0" }}>
               <option value="DEPT_CONTACT">部门对接人</option>
-              <option value="PA_SPECIALIST">LPA 专员</option>
+              <option value="PA_SPECIALIST">PA 专员</option>
               <option value="SUPER_ADMIN">超级管理员</option>
             </select>
           </div>
@@ -517,7 +526,7 @@ function EditUserModal({
             <select value={role} onChange={(e) => setRole(e.target.value)}
               className="w-full px-3 py-2.5 rounded-xl text-sm bg-white outline-none" style={{ border: "1px solid #e2e8f0" }}>
               <option value="DEPT_CONTACT">部门对接人</option>
-              <option value="PA_SPECIALIST">LPA 专员</option>
+              <option value="PA_SPECIALIST">PA 专员</option>
               <option value="SUPER_ADMIN">超级管理员</option>
             </select>
           </div>
@@ -865,7 +874,7 @@ function BatchImportModal({
               <select value={role} onChange={e => setRole(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl text-sm outline-none bg-white" style={{ border: "1px solid #e2e8f0" }}>
                 <option value="DEPT_CONTACT">部门对接人</option>
-                <option value="PA_SPECIALIST">LPA 专员</option>
+                <option value="PA_SPECIALIST">PA 专员</option>
                 <option value="SUPER_ADMIN">超级管理员</option>
               </select>
             </div>
@@ -1364,14 +1373,14 @@ const CONFIG_SECTIONS = [
         label:       "平台主名称",
         hint:        "显示在侧边栏左上角的平台品牌名",
         type:        "input"    as const,
-        placeholder: "Momenta LPA",
+        placeholder: "瑞启深空 PA",
       },
       {
         key:         "sidebar_footer_text",
         label:       "侧边栏底部说明",
         hint:        "版权信息或支持联系方式（侧边栏展开时可见）",
         type:        "textarea" as const,
-        placeholder: "© 2025 Momenta · LPA 部门",
+        placeholder: "© 2025 瑞启深空 · PA 部门",
       },
     ],
   },
@@ -1603,7 +1612,7 @@ interface FeishuTarget {
 interface Dept { id: string; name: string }
 
 const MODULE_OPTS = [
-  { value: "reception",          label: "政府接待",   color: "#2563eb", bg: "#eff6ff" },
+  { value: "reception",          label: "会议接待",   color: "#2563eb", bg: "#eff6ff" },
   { value: "major-project",      label: "重大项目",   color: "#059669", bg: "#f0fdf4" },
   { value: "honor",              label: "荣誉资质",   color: "#d97706", bg: "#fffbeb" },
   { value: "talent",             label: "人才福利",   color: "#7c3aed", bg: "#f5f3ff" },
@@ -2292,6 +2301,421 @@ function FeishuTargetsTab() {
   );
 }
 
+// ── Tab: 侧边栏菜单（显示 / 隐藏 + 账号权限关联） ────────────────
+
+function SidebarMenuTab() {
+  const [cfg, setCfg]           = useState<SidebarConfig>(DEFAULT_SIDEBAR_CONFIG);
+  const [loading, setLoading]   = useState(true);
+  const [saving, setSaving]     = useState(false);
+  const [dirty, setDirty]       = useState(false);
+  const [msg, setMsg]           = useState("");
+  const [err, setErr]           = useState("");
+  const [accounts, setAccounts] = useState<User[]>([]);
+  const [pickEmail, setPickEmail] = useState("");
+
+  useEffect(() => {
+    void load();
+    void loadAccounts();
+  }, []);
+
+  async function load() {
+    setLoading(true);
+    setErr("");
+    try {
+      const r = await fetch("/api/sidebar-config");
+      const d = await r.json();
+      if (!r.ok) throw new Error(d?.error ?? "读取配置失败");
+      setCfg({ ...DEFAULT_SIDEBAR_CONFIG, ...(d.config ?? {}) });
+      setDirty(false);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "读取配置失败");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadAccounts() {
+    try {
+      const r = await fetch("/api/users?take=200");
+      const d = await r.json();
+      if (r.ok && Array.isArray(d.users)) setAccounts(d.users as User[]);
+    } catch {
+      /* 账号列表拉取失败不阻塞主流程 */
+    }
+  }
+
+  function patch(next: Partial<SidebarConfig>) {
+    setCfg((c) => ({ ...c, ...next }));
+    setDirty(true);
+    setMsg("");
+  }
+
+  /** 全局显示开关：只有显式 false 才是隐藏 */
+  function isVisible(key: string) {
+    return cfg.global[key] !== false;
+  }
+
+  function toggleGlobal(key: string) {
+    const g = { ...cfg.global };
+    if (isVisible(key)) g[key] = false;
+    else delete g[key];
+    patch({ global: g });
+  }
+
+  /** 某菜单当前允许的角色（未配置 = 全部角色） */
+  function rolesOf(key: string): string[] {
+    const s = cfg.roleScope[key];
+    return Array.isArray(s) && s.length > 0 ? s : [...CONFIG_ROLES];
+  }
+
+  function toggleRole(key: string, role: string) {
+    const cur  = rolesOf(key);
+    const next = cur.includes(role) ? cur.filter((r) => r !== role) : [...cur, role];
+    const rs   = { ...cfg.roleScope };
+    const g    = { ...cfg.global };
+
+    if (next.length === 0) {
+      // 没有任何角色可见 → 等价于全局隐藏
+      g[key] = false;
+      delete rs[key];
+    } else if (next.length === CONFIG_ROLES.length) {
+      // 三个角色都允许 → 回到「不额外限制」
+      delete rs[key];
+      delete g[key];
+    } else {
+      rs[key] = next;
+      delete g[key];
+    }
+    patch({ roleScope: rs, global: g });
+  }
+
+  /** 角色默认可见性（不含任何显示配置），用于给管理员一个参照 */
+  function defaultRolesFor(key: string): string[] {
+    return CONFIG_ROLES.filter((role) =>
+      getNavItems(role, [], false, null).some((i) => navKey(i) === key),
+    );
+  }
+
+  function modsOf(email: string): string[] {
+    return cfg.accountWhitelist[email] ?? [];
+  }
+
+  function toggleAccountMod(email: string, key: string) {
+    const cur  = modsOf(email);
+    const next = cur.includes(key) ? cur.filter((k) => k !== key) : [...cur, key];
+    patch({ accountWhitelist: { ...cfg.accountWhitelist, [email]: next } });
+  }
+
+  function addAccount(raw: string) {
+    const e = raw.trim().toLowerCase();
+    if (!e) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
+      setErr("邮箱格式不合法：" + e);
+      return;
+    }
+    setErr("");
+    patch({
+      accountWhitelist: { ...cfg.accountWhitelist, [e]: cfg.accountWhitelist[e] ?? [] },
+    });
+    setPickEmail("");
+  }
+
+  function removeAccount(email: string) {
+    const next = { ...cfg.accountWhitelist };
+    delete next[email];
+    patch({ accountWhitelist: next });
+  }
+
+  async function save() {
+    setSaving(true);
+    setErr("");
+    setMsg("");
+    try {
+      const r = await fetch("/api/sidebar-config", {
+        method:  "PUT",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ config: cfg }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d?.error ?? "保存失败");
+      setCfg({ ...DEFAULT_SIDEBAR_CONFIG, ...(d.config ?? {}) });
+      setDirty(false);
+      setMsg("已保存。刷新页面（或重新进入）后侧边栏即按新配置渲染。");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "保存失败");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const hiddenCount   = ALL_NAV_ITEMS.filter((i) => !isVisible(navKey(i))).length;
+  const accountList   = Object.keys(cfg.accountWhitelist);
+  /** 已加入白名单的账号从下拉里剔除 */
+  const pickCandidates = accounts.filter(
+    (u) => !Object.prototype.hasOwnProperty.call(cfg.accountWhitelist, (u.email ?? "").toLowerCase()),
+  );
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-2xl p-12 shadow-sm text-center" style={{ border: "1px solid #e2e8f0" }}>
+        <Loader2 size={22} className="animate-spin mx-auto mb-3 text-slate-400" />
+        <p className="text-sm text-slate-400">正在读取侧边栏配置…</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* 卡片头 */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm" style={{ border: "1px solid #e2e8f0" }}>
+        <div className="flex items-start justify-between gap-6 flex-wrap">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: "linear-gradient(135deg,#2563eb,#06b6d4)" }}>
+              <LayoutList size={17} className="text-white" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-slate-800">侧边栏菜单显示</h2>
+              <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
+                控制左侧导航栏渲染哪些菜单入口。隐藏只影响<span className="font-medium text-slate-600">入口是否出现</span>，
+                <span className="font-medium text-slate-600">不会删除任何页面与数据</span>；隐藏后直接访问该模块网址依然可用。
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { setCfg({ ...DEFAULT_SIDEBAR_CONFIG, global: {}, roleScope: {}, accountWhitelist: {} }); setDirty(true); setMsg(""); }}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors"
+              style={{ background: "#f1f5f9", color: "#475569" }}>
+              <RotateCcw size={13} />恢复默认
+            </button>
+            <button
+              onClick={save}
+              disabled={saving || !dirty}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold text-white transition-opacity"
+              style={{
+                background: saving || !dirty ? "#94a3b8" : "linear-gradient(135deg,#2563eb,#4f46e5)",
+                cursor:     saving || !dirty ? "not-allowed" : "pointer",
+              }}>
+              {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+              {saving ? "保存中…" : "保存所有更改"}
+            </button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 mt-4 px-4 py-2.5 rounded-xl"
+          style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)" }}>
+          <AlertTriangle size={14} style={{ color: "#f59e0b" }} />
+          <p className="text-xs" style={{ color: "#92400e" }}>
+            当前 {hiddenCount} 个菜单被隐藏 · {accountList.length} 个账号被限定了专属可见范围。
+            每次保存均写入审计日志。
+          </p>
+        </div>
+
+        {msg && (
+          <div className="flex items-center gap-2 mt-3 px-4 py-2.5 rounded-xl"
+            style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.25)" }}>
+            <CheckCircle2 size={14} style={{ color: "#22c55e" }} />
+            <p className="text-xs" style={{ color: "#15803d" }}>{msg}</p>
+          </div>
+        )}
+        {err && (
+          <div className="flex items-center gap-2 mt-3 px-4 py-2.5 rounded-xl"
+            style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)" }}>
+            <AlertTriangle size={14} style={{ color: "#ef4444" }} />
+            <p className="text-xs" style={{ color: "#b91c1c" }}>{err}</p>
+          </div>
+        )}
+      </div>
+
+      {/* 区块一：菜单项开关 */}
+      <div className="bg-white rounded-2xl shadow-sm overflow-hidden" style={{ border: "1px solid #e2e8f0" }}>
+        <div className="px-6 py-4" style={{ borderBottom: "1px solid #f1f5f9" }}>
+          <h3 className="text-sm font-semibold text-slate-800">菜单显示开关</h3>
+          <p className="text-xs text-slate-400 mt-0.5">
+            「全局显示」关闭后，所有角色（含超级管理员）都看不到该入口；「可见角色」用于按角色收窄。
+          </p>
+        </div>
+
+        <div className="divide-y" style={{ borderColor: "#f8fafc" }}>
+          {ALL_NAV_ITEMS.map((item) => {
+            const key      = navKey(item);
+            const visible  = isVisible(key);
+            const roles    = rolesOf(key);
+            const defaults = defaultRolesFor(key);
+            const Icon     = item.icon;
+            return (
+              <div key={key} className="px-6 py-3.5 flex items-center gap-4" style={{ opacity: visible ? 1 : 0.55 }}>
+                {/* 图标 */}
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ background: visible ? "#f1f5f9" : "#fef2f2" }}>
+                  <Icon size={15} style={{ color: visible ? "#475569" : "#ef4444" }} />
+                </div>
+
+                {/* 名称 */}
+                <div className="min-w-0 w-52 flex-shrink-0">
+                  <p className="text-sm font-medium text-slate-700 truncate">{item.label}</p>
+                  <p className="text-xs text-slate-400 truncate">{item.href}</p>
+                </div>
+
+                {/* 可见角色 */}
+                <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                  {CONFIG_ROLES.map((role) => {
+                    const on = visible && roles.includes(role);
+                    return (
+                      <button
+                        key={role}
+                        onClick={() => { if (!visible) toggleGlobal(key); toggleRole(key, role); }}
+                        title={`${ROLE_LABEL[role]} · 默认${defaults.includes(role) ? "可见" : "不可见"}`}
+                        className="px-2.5 py-1 rounded-lg text-xs font-medium transition-all whitespace-nowrap"
+                        style={{
+                          background: on ? ROLE_CFG[role].bg : "#f8fafc",
+                          color:      on ? ROLE_CFG[role].color : "#cbd5e1",
+                          border:     `1px solid ${on ? ROLE_CFG[role].color + "33" : "#f1f5f9"}`,
+                        }}>
+                        {ROLE_LABEL[role]}
+                      </button>
+                    );
+                  })}
+                  {!visible && (
+                    <span className="text-xs px-2 py-0.5 rounded-md"
+                      style={{ background: "rgba(239,68,68,0.08)", color: "#dc2626" }}>
+                      全局已隐藏
+                    </span>
+                  )}
+                </div>
+
+                {/* 全局开关 */}
+                <button
+                  onClick={() => toggleGlobal(key)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium flex-shrink-0 transition-colors"
+                  style={{
+                    background: visible ? "rgba(34,197,94,0.1)" : "rgba(239,68,68,0.1)",
+                    color:      visible ? "#15803d" : "#dc2626",
+                  }}>
+                  {visible ? <Eye size={13} /> : <EyeOff size={13} />}
+                  {visible ? "显示" : "隐藏"}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 区块二：账号专属可见范围 */}
+      <div className="bg-white rounded-2xl shadow-sm overflow-hidden" style={{ border: "1px solid #e2e8f0" }}>
+        <div className="px-6 py-4" style={{ borderBottom: "1px solid #f1f5f9" }}>
+          <h3 className="text-sm font-semibold text-slate-800">账号专属可见范围（关联账号权限）</h3>
+          <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
+            为指定账号指定「只允许看到哪些菜单」。一旦某账号进入此表，其侧边栏<span className="font-medium text-slate-500">只</span>渲染被勾选的菜单，
+            角色默认可见范围被完全覆盖（全局隐藏仍然优先）。<span className="font-medium text-slate-500">全局显示开关对所有人都生效，账号白名单不能反向放开被全局隐藏的菜单。</span>
+          </p>
+        </div>
+
+        <div className="px-6 py-4 space-y-4">
+          {/* 新增账号 */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative">
+              <select
+                value={pickEmail}
+                onChange={(e) => setPickEmail(e.target.value)}
+                className="appearance-none pr-8 pl-3 py-2 rounded-lg text-xs text-slate-600 outline-none"
+                style={{ background: "#f8fafc", border: "1px solid #e2e8f0", minWidth: 260 }}>
+                <option value="">— 选择要限定范围的账号 —</option>
+                {pickCandidates
+                  .filter((u) => u.email && !Object.prototype.hasOwnProperty.call(cfg.accountWhitelist, u.email.toLowerCase()))
+                  .map((u) => (
+                    <option key={u.id} value={u.email}>
+                      {u.name} · {u.email} · {ROLE_LABEL[u.role] ?? u.role}
+                    </option>
+                  ))}
+              </select>
+              <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
+            </div>
+            <button
+              onClick={() => addAccount(pickEmail)}
+              disabled={!pickEmail}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white"
+              style={{ background: pickEmail ? "#2563eb" : "#cbd5e1", cursor: pickEmail ? "pointer" : "not-allowed" }}>
+              <Plus size={13} />加入白名单
+            </button>
+            <button
+              onClick={() => { const v = window.prompt("输入账号邮箱（用于手工录入未在系统中的邮箱）"); if (v) addAccount(v); }}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium"
+              style={{ background: "#f1f5f9", color: "#475569" }}>
+              <UserPlus size={13} />手工输入邮箱
+            </button>
+          </div>
+
+          {accountList.length === 0 && (
+            <div className="px-4 py-6 rounded-xl text-center text-xs text-slate-400"
+              style={{ background: "#f8fafc", border: "1px dashed #e2e8f0" }}>
+              尚未限定任何账号。未列入此表的账号按「角色默认权限 + 全局开关」渲染侧边栏。
+            </div>
+          )}
+
+          {/* 已有账号 */}
+          {accountList.map((email) => {
+            const mods = modsOf(email);
+            return (
+              <div key={email} className="rounded-xl p-4" style={{ background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-slate-700 truncate">{email}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      允许看到 {mods.length} 个菜单{mods.length === 0 ? "（当前为空 → 该账号侧边栏无任何菜单）" : ""}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      onClick={() => patch({ accountWhitelist: { ...cfg.accountWhitelist, [email]: ALL_NAV_ITEMS.map((i) => navKey(i)) } })}
+                      className="px-2.5 py-1 rounded-md text-xs" style={{ background: "white", color: "#475569", border: "1px solid #e2e8f0" }}>
+                      全选
+                    </button>
+                    <button
+                      onClick={() => patch({ accountWhitelist: { ...cfg.accountWhitelist, [email]: [] } })}
+                      className="px-2.5 py-1 rounded-md text-xs" style={{ background: "white", color: "#475569", border: "1px solid #e2e8f0" }}>
+                      清空
+                    </button>
+                    <button
+                      onClick={() => removeAccount(email)}
+                      className="p-1.5 rounded-md" style={{ background: "rgba(239,68,68,0.08)", color: "#dc2626" }}
+                      title="移出白名单（恢复角色默认）">
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {ALL_NAV_ITEMS.map((item) => {
+                    const key = navKey(item);
+                    const on  = mods.includes(key);
+                    const Icon = item.icon;
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => toggleAccountMod(email, key)}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
+                        style={{
+                          background: on ? "rgba(37,99,235,0.1)" : "white",
+                          color:      on ? "#2563eb" : "#94a3b8",
+                          border:     `1px solid ${on ? "rgba(37,99,235,0.3)" : "#e2e8f0"}`,
+                        }}>
+                        <Icon size={12} />
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── 主页面 ────────────────────────────────────────────────────
 
 export default function SettingsPage() {
@@ -2347,6 +2771,7 @@ export default function SettingsPage() {
 
       <div className="px-8 pb-8">
         {activeTab === "org"             && <OrgTab />}
+        {activeTab === "sidebar"         && <SidebarMenuTab />}
         {activeTab === "audit"           && <AuditTab />}
         {activeTab === "config"          && <ConfigTab />}
         {activeTab === "feishu_targets"  && <FeishuTargetsTab />}

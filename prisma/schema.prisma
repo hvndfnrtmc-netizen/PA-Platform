@@ -55,6 +55,8 @@ model User {
   updatedAt                DateTime             @updatedAt @map("updated_at")
   /// * 党员关系模块个人白名单授权（SUPER_ADMIN 默认放行，无需此字段）
   hasPartyModuleAccess     Boolean              @default(false) @map("has_party_module_access")
+  /// * 党员关系模块「审批侧」授权：可进入审批工作台并执行审核/驳回（SUPER_ADMIN 默认放行）
+  hasPartyAdminAccess      Boolean              @default(false) @map("has_party_admin_access")
   assetVersions            AssetVersion[]
   createdAssets            Asset[]              @relation("AssetCreator")
   auditLogs                AuditLog[]

@@ -38,7 +38,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
   const session = await getSession();
   if (!session?.user) return NextResponse.json({ error: "未登录" }, { status: 401 });
   if (!["SUPER_ADMIN", "PA_SPECIALIST"].includes(session.user.role))
-    return NextResponse.json({ error: `权限不足：当前账号角色为 ${session.user.role}，需要 LPA 专员或超级管理员权限` }, { status: 403 });
+    return NextResponse.json({ error: `权限不足：当前账号角色为 ${session.user.role}，需要 PA 专员或超级管理员权限` }, { status: 403 });
 
   const { id } = await ctx.params;
   const task = await findTask(id);
@@ -51,7 +51,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   const session = await getSession();
   if (!session?.user) return NextResponse.json({ error: "未登录" }, { status: 401 });
   if (!["SUPER_ADMIN", "PA_SPECIALIST"].includes(session.user.role))
-    return NextResponse.json({ error: `权限不足：当前账号角色为 ${session.user.role}，需要 LPA 专员或超级管理员权限` }, { status: 403 });
+    return NextResponse.json({ error: `权限不足：当前账号角色为 ${session.user.role}，需要 PA 专员或超级管理员权限` }, { status: 403 });
 
   const { id } = await ctx.params;
   const existing = await findTask(id);

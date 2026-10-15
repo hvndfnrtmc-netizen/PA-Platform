@@ -77,7 +77,7 @@ const FILE_CATEGORIES = [
   { value: "other",      label: "其他" },
 ];
 
-const YEARS = [2024, 2025, 2026, 2027, 2028];
+const YEARS = [2026, 2027, 2028];
 
 function statusMeta(v: string) {
   return STATUS_OPTIONS.find(s => s.value === v) ?? STATUS_OPTIONS[0];

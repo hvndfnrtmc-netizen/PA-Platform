@@ -1496,7 +1496,7 @@ function PermissionsContent() {
     <div className="space-y-3">
       <div className="px-4 py-3 rounded-xl text-xs text-slate-600 leading-relaxed" style={{ background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.15)" }}>
         <p className="font-medium text-purple-700 mb-1">权限规则说明</p>
-        LPA 部门管理员默认拥有全部 EDIT 权限，无需配置。下方仅展示<strong>业务配合部门</strong>，可按需授予「可查看」或「可编辑」权限。
+        PA 部门管理员默认拥有全部 EDIT 权限，无需配置。下方仅展示<strong>业务配合部门</strong>，可按需授予「可查看」或「可编辑」权限。
       </div>
       <div className="overflow-y-auto" style={{ maxHeight: "55vh" }}>
         {isLoading ? (

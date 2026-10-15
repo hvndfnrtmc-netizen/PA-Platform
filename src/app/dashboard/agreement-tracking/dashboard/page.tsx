@@ -236,11 +236,9 @@ function YearEndPrediction({ kpi, year }: { kpi: KpiActual; year: number }) {
 
 // ── 主组件 ────────────────────────────────────────────────────────
 
-const YEARS_LIST = [2024, 2025, 2026, 2027, 2028];
+const YEARS_LIST = [2026, 2027, 2028];
 
 const MILESTONES = [
-  { year: 2024, label: "首年考核" },
-  { year: 2025, label: "成长建设期" },
   { year: 2026, label: "规模扩张期" },
   { year: 2027, label: "高速发展期" },
   { year: 2028, label: "IPO 目标截止" },
@@ -303,7 +301,7 @@ export default function BiDashboard() {
           </Link>
           <div>
             <h1 className="text-sm font-bold text-slate-800">落地协议 BI 数据大屏</h1>
-            <p className="text-xs text-slate-400">Momenta（苏州）科技 · 实时监控 · {year}年度</p>
+            <p className="text-xs text-slate-400">瑞启深空（苏州）科技 · 实时监控 · {year}年度</p>
           </div>
         </div>
         <div className="flex items-center gap-3">

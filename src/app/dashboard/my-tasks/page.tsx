@@ -169,7 +169,7 @@ function TaskCard({
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-blue-700"
           style={{ background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.15)" }}>
           <ClipboardCheck size={12} />
-          已于 {new Date(assignment.submittedAt).toLocaleString("zh-CN")} 提交，等待 LPA 审核
+          已于 {new Date(assignment.submittedAt).toLocaleString("zh-CN")} 提交，等待 PA 审核
         </div>
       )}
 
@@ -231,7 +231,7 @@ function TaskCard({
           <div className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm text-slate-400 bg-slate-50"
             style={{ border: "1px solid #e2e8f0" }}>
             <FileText size={14} />
-            填报方式待 LPA 配置
+            填报方式待 PA 配置
           </div>
         )}
 
@@ -241,7 +241,7 @@ function TaskCard({
             style={{ background: "rgba(107,114,128,0.06)", color: "#6b7280", border: "1px solid rgba(107,114,128,0.15)" }}>
             {task.status === "ARCHIVED"
               ? "任务已归档，如需继续填报请联系管理员开放编辑权限"
-              : "管理员已将本部门权限设为只读，如需填报请联系 LPA 专员"}
+              : "管理员已将本部门权限设为只读，如需填报请联系 PA 专员"}
           </div>
         )}
 
@@ -282,7 +282,7 @@ function SubmitConfirmDialog({
           </div>
           <div>
             <p className="font-semibold text-slate-800 text-sm">确认提交</p>
-            <p className="text-xs text-slate-500 mt-0.5">提交后将通知 LPA 审核，确认数据已填写完毕</p>
+            <p className="text-xs text-slate-500 mt-0.5">提交后将通知 PA 审核，确认数据已填写完毕</p>
           </div>
         </div>
         <div className="px-3 py-2.5 rounded-xl text-sm text-slate-700 mb-5"
@@ -337,8 +337,8 @@ export default function MyTasksPage() {
     setError("");
     try {
       const res = await fetch("/api/my-tasks");
-      if (res.status === 403) { setError("权限不足，请联系 LPA 管理员确认你的账号权限"); return; }
-      if (res.status === 422) { setError("你的账号尚未绑定业务部门，请联系 LPA 管理员配置"); return; }
+      if (res.status === 403) { setError("权限不足，请联系 PA 管理员确认你的账号权限"); return; }
+      if (res.status === 422) { setError("你的账号尚未绑定业务部门，请联系 PA 管理员配置"); return; }
       if (!res.ok) throw new Error("加载失败");
       const data = await res.json();
       setAssignments(data.assignments ?? []);
@@ -383,7 +383,7 @@ export default function MyTasksPage() {
       );
       // 更新统计（重新拉取）
       fetchTasks();
-      setToast("✅ 已成功提交！LPA 将尽快审核。");
+      setToast("✅ 已成功提交！PA 将尽快审核。");
       setTimeout(() => setToast(null), 4000);
     } catch (e: unknown) {
       alert((e as Error).message);
@@ -474,7 +474,7 @@ export default function MyTasksPage() {
             <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: "#16a34a" }}>2</div>
           </div>
           <div className="flex-1">
-            <p className="text-xs font-semibold text-slate-700">回到此页，点击「填写完成，标记已提交」→ 通知 LPA 审核</p>
+            <p className="text-xs font-semibold text-slate-700">回到此页，点击「填写完成，标记已提交」→ 通知 PA 审核</p>
           </div>
         </div>
       </div>
@@ -551,7 +551,7 @@ export default function MyTasksPage() {
             <p className="text-sm font-medium text-slate-500">
               {assignments.length === 0 ? "当前暂无需要贵部门协助提供的数据" : "该状态下暂无任务"}
             </p>
-            <p className="text-xs text-slate-400 mt-1">如有疑问，欢迎随时联系 LPA 运营专员</p>
+            <p className="text-xs text-slate-400 mt-1">如有疑问，欢迎随时联系 PA 运营专员</p>
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-4">

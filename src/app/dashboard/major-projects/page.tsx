@@ -43,6 +43,7 @@ import {
 import type { ParsedProject } from "@/app/api/major-projects/parse-bitable/route";
 import PageHeaderWithConfig from "@/components/shared/PageHeaderWithConfig";
 import {
+  DictSelect,
   LevelDictSelect,
   CategoryDictSelect,
 } from "./DictSelect";
@@ -1674,6 +1675,18 @@ export default function MajorProjectsPage() {
   const [newChildName, setNewChildName] = useState("");
   const [addingChild, setAddingChild] = useState(false);
 
+  // 新建项目 Modal
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newProject, setNewProject] = useState<{
+    name: string;
+    levelDictId: string | null;
+    categoryDictId: string | null;
+    companyEntityDictId: string | null;
+    totalAmount: string;
+    remark: string;
+  }>({ name: "", levelDictId: null, categoryDictId: null, companyEntityDictId: null, totalAmount: "", remark: "" });
+
   // 批量汇总下拉
   const [aggregateDropOpen, setAggregateDropOpen] = useState(false);
   const [aggregating, setAggregating] = useState(false);
@@ -1681,6 +1694,39 @@ export default function MajorProjectsPage() {
   function showToast(msg: string, type: "success" | "error" = "success") {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 4000);
+  }
+
+  // 新建项目提交
+  async function handleCreateProject(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newProject.name.trim()) {
+      showToast("项目名称不能为空", "error");
+      return;
+    }
+    setCreating(true);
+    try {
+      const res = await fetch("/api/major-projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newProject.name.trim(),
+          levelDictId: newProject.levelDictId,
+          categoryDictId: newProject.categoryDictId,
+          companyEntityDictId: newProject.companyEntityDictId,
+          totalAmount: newProject.totalAmount ? Number(newProject.totalAmount) : null,
+          remark: newProject.remark.trim() || null,
+        }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error ?? "创建失败");
+      showToast("项目已创建");
+      setCreateModalOpen(false);
+      setNewProject({ name: "", levelDictId: null, categoryDictId: null, companyEntityDictId: null, totalAmount: "", remark: "" });
+      loadProjects();
+    } catch (err) {
+      showToast((err as Error).message, "error");
+    } finally {
+      setCreating(false);
+    }
   }
 
   // 加载项目列表
@@ -2038,6 +2084,18 @@ export default function MajorProjectsPage() {
         defaultDescription="项目全生命周期管理与追踪"
         rightSlot={
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setCreateModalOpen(true)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all"
+              style={{
+                background: "rgba(34,197,94,0.85)",
+                color: "white",
+                border: "1px solid rgba(34,197,94,0.4)",
+              }}
+            >
+              <Plus size={14} />
+              新增项目
+            </button>
             {selectedIds.size > 0 && (
                 <>
                   <span
@@ -2579,6 +2637,118 @@ export default function MajorProjectsPage() {
               下一页
             </button>
           </div>
+        </div>
+      )}
+
+      {/* 新建项目 Modal */}
+      {createModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <form
+            onSubmit={handleCreateProject}
+            className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-gray-900">新增重大项目</h3>
+              <button
+                type="button"
+                onClick={() => setCreateModalOpen(false)}
+                className="p-1.5 rounded-lg hover:bg-slate-100"
+              >
+                <X size={18} style={{ color: "#64748b" }} />
+              </button>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 mb-1.5">项目名称 *</label>
+              <input
+                value={newProject.name}
+                onChange={(e) => setNewProject((p) => ({ ...p, name: e.target.value }))}
+                placeholder="请输入项目名称"
+                className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                style={{ border: "1px solid #e2e8f0" }}
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5">项目级别</label>
+                <DictSelect
+                  category="level"
+                  value={newProject.levelDictId}
+                  onChange={(id) => setNewProject((p) => ({ ...p, levelDictId: id }))}
+                  placeholder="请选择级别"
+                  canEdit={true}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5">项目类别</label>
+                <DictSelect
+                  category="category"
+                  value={newProject.categoryDictId}
+                  onChange={(id) => setNewProject((p) => ({ ...p, categoryDictId: id }))}
+                  placeholder="请选择类别"
+                  canEdit={true}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5">收款公司主体</label>
+                <DictSelect
+                  category="companyEntity"
+                  value={newProject.companyEntityDictId}
+                  onChange={(id) => setNewProject((p) => ({ ...p, companyEntityDictId: id }))}
+                  placeholder="请选择公司"
+                  canEdit={true}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1.5">总金额（元）</label>
+                <input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={newProject.totalAmount}
+                  onChange={(e) => setNewProject((p) => ({ ...p, totalAmount: e.target.value }))}
+                  placeholder="0.00"
+                  className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  style={{ border: "1px solid #e2e8f0" }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 mb-1.5">备注</label>
+              <textarea
+                value={newProject.remark}
+                onChange={(e) => setNewProject((p) => ({ ...p, remark: e.target.value }))}
+                placeholder="可选填"
+                rows={3}
+                className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none"
+                style={{ border: "1px solid #e2e8f0" }}
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setCreateModalOpen(false)}
+                className="px-4 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-100"
+              >
+                取消
+              </button>
+              <button
+                type="submit"
+                disabled={creating || !newProject.name.trim()}
+                className="px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-60"
+                style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)" }}
+              >
+                {creating ? "创建中..." : "创建项目"}
+              </button>
+            </div>
+          </form>
         </div>
       )}
 

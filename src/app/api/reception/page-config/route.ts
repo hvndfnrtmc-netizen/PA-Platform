@@ -43,7 +43,7 @@ const DEFAULT_QUICK_LINKS: QuickLink[] = [
 ];
 
 const DEFAULT_CONFIG: PageConfig = {
-  pageMeta:     { title: "政府接待", description: "接待记录管理与归档" },
+  pageMeta:     { title: "会议接待", description: "接待记录管理与归档" },
   quickLinks:   DEFAULT_QUICK_LINKS,
   drawerFields: DEFAULT_DRAWER_FIELDS,
 };

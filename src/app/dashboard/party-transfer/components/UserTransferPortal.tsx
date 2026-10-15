@@ -24,7 +24,7 @@ const STAGES = [
   { id: 2, label: "党费标准",   icon: CreditCard,     short: "确认党费已交至转接流程发起当月，填写党费标准及金额" },
   { id: 3, label: "转接引导",   icon: ArrowLeftRight, short: "确认组织关系转出方式" },
   { id: 4, label: "信息采集",   icon: ClipboardList,  short: "填写党员基本信息表" },
-  { id: 5, label: "入群确认",   icon: Users,          short: "加入 Momenta 党员群" },
+  { id: 5, label: "入群确认",   icon: Users,          short: "加入 瑞启深空 党员群" },
   { id: 6, label: "审核归档",   icon: Archive,        short: "材料齐全后正式存档" },
 ];
 
@@ -134,7 +134,7 @@ interface PartyCustomConfig {
 
 // Task 7：DEFAULT_ANNOUNCEMENT 保留给配置弹窗作 placeholder，但不再展示在页面上
 const DEFAULT_ANNOUNCEMENT =
-  "2024 年新入职党员请注意：请先完成档案整理，再发起转入申请。如有特殊情况（档案在外省人才市场），请先联系 @Nerida Gao 获取查档函后再操作。";
+  "2024 年新入职党员请注意：请先完成档案整理，再发起转入申请。如有特殊情况（档案在外省人才市场），请先联系 @顾毅潇 获取查档函后再操作。";
 
 const fetcher = (url: string) => fetch(url).then(r => r.json());
 
@@ -249,7 +249,7 @@ function Stage1({
           const t = feishuTargets.find(t => t.feishuId === fid);
           return { label: t ? t.name : fid, feishuId: fid };
         })
-      : [{ label: "Nerida Gao" }, { label: "Zoe Gu" }];
+      : [{ label: "顾毅潇" }];
 
   return (
     <div className="space-y-4">
@@ -267,7 +267,7 @@ function Stage1({
               value={targetBranchName}
               onChange={e => onChangeBasicInfo("targetBranchName", e.target.value)}
               onBlur={onBlurBasicInfo}
-              placeholder="如：Momenta 第一党支部"
+              placeholder="如：瑞启深空 第一党支部"
               disabled={previewOnly}
               className="w-full px-3 py-2 rounded-lg text-sm outline-none disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ border: "1px solid #e2e8f0" }}
@@ -1363,7 +1363,7 @@ function Stage5({
           <Users size={32} color="white" />
         </div>
         <p className="text-base font-bold text-white mb-1">
-          {hasLink ? "点击一键加入 Momenta 党员飞书群" : "飞书群链接未配置，请联系管理员"}
+          {hasLink ? "点击一键加入 瑞启深空 党员飞书群" : "飞书群链接未配置，请联系管理员"}
         </p>
         <p className="text-xs text-white/75">群内将发布组织生活通知及转接后续指引</p>
       </a>
@@ -1399,7 +1399,7 @@ function Stage6({
           <p className="text-xl font-bold" style={{ color: "#1a1a1a" }}>🎉 转接全部完成，欢迎加入！</p>
           <p className="text-sm mt-2 leading-relaxed" style={{ color: "#777" }}>
             您的组织关系已正式转入，电子党员档案已生成。<br />
-            欢迎加入 Momenta 党支部大家庭！
+            欢迎加入 瑞启深空 党支部大家庭！
           </p>
         </div>
         {collectedInfo && (
@@ -2054,7 +2054,7 @@ export default function UserTransferPortal({
                 {customConfig.pageTitle || "党员组织关系转接系统"}
               </h1>
               <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.75)" }}>
-                {customConfig.pageSubtitle || "Momenta · 初速度（苏州）科技有限公司党总支"}
+                {customConfig.pageSubtitle || "瑞启深空 · 初速度（苏州）科技有限公司党总支"}
               </p>
             </div>
             {isSuperAdmin && (
@@ -2641,7 +2641,7 @@ function PartyConfigModal({
                   onChange={e => setDraft(d => ({ ...d, pageSubtitle: e.target.value }))}
                   className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-300"
                   style={{ border: "1px solid #e2e8f0" }}
-                  placeholder="默认: Momenta · 初速度（苏州）科技有限公司党总支"
+                  placeholder="默认: 瑞启深空 · 初速度（苏州）科技有限公司党总支"
                 />
               </div>
               {/* 快捷链接配置 */}

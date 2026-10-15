@@ -947,7 +947,7 @@ function IntelligenceDrawer({
 
                         {/* 业务研判 */}
                         <div className="p-4 rounded-xl" style={{ background: "linear-gradient(135deg, rgba(16,185,129,0.06), rgba(59,130,246,0.06))", border: "1px solid rgba(16,185,129,0.15)" }}>
-                          <p className="text-xs font-semibold text-emerald-600 mb-1.5 flex items-center gap-1">🚗 行业与 Momenta 业务研判</p>
+                          <p className="text-xs font-semibold text-emerald-600 mb-1.5 flex items-center gap-1">🚗 行业与 瑞启深空 业务研判</p>
                           <p className="text-sm text-slate-700 leading-relaxed">{analysis.impact}</p>
                         </div>
 

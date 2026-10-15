@@ -3,7 +3,7 @@
  *
  * 规则：
  *   SUPER_ADMIN          → 无条件放行
- *   其他角色              → 必须持有 hasPartyModuleAccess = true 的个人授权
+ *   其他角色              → 必须持有 hasPartyModuleAccess 或 hasPartyAdminAccess 授权
  *
  * 拦截时渲染优雅的 403 页面，不抛出异常、不崩溃。
  */
@@ -11,7 +11,7 @@
 import { redirect } from "next/navigation";
 import { Lock } from "lucide-react";
 import { getSession } from "@/lib/auth";
-import prisma from "@/lib/prisma";
+import { getPartyAccess } from "@/lib/party-auth";
 
 export default async function PartyTransferLayout({
   children,
@@ -23,16 +23,9 @@ export default async function PartyTransferLayout({
 
   const { role, id: userId } = session.user;
 
-  // SUPER_ADMIN 默认放行
-  if (role === "SUPER_ADMIN") return <>{children}</>;
-
-  // 其余角色：查库验证个人白名单授权
-  const user = await prisma.user.findUnique({
-    where:  { id: userId },
-    select: { hasPartyModuleAccess: true },
-  });
-
-  if (user?.hasPartyModuleAccess) return <>{children}</>;
+  // 统一判定：SUPER_ADMIN / hasPartyModuleAccess / hasPartyAdminAccess
+  const access = await getPartyAccess({ userId, role });
+  if (access.canAccessModule) return <>{children}</>;
 
   // ── 403 优雅拦截页 ────────────────────────────────────────────
   return (

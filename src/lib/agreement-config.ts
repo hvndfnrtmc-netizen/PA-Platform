@@ -1,6 +1,6 @@
 /**
  * 落地协议核心配置：KPI 目标值、权重与计算逻辑
- * 数据来源：苏州高新区与 Momenta 落地协议（2024-2028）
+ * 数据来源：苏州高新区与 瑞启深空 落地协议（2026-2028）
  */
 
 export const KPI_KEYS = [
@@ -26,31 +26,31 @@ export interface KpiConfig {
 export const KPI_CONFIG: Record<KpiKey, KpiConfig> = {
   REVENUE: {
     key: "REVENUE", label: "营业收入", unit: "亿元", weight: 0.40,
-    targets: { 2024: 5, 2025: 8, 2026: 12, 2027: 18, 2028: 25 },
+    targets: { 2026: 12, 2027: 18, 2028: 25 },
   },
   TAX_TOTAL: {
     key: "TAX_TOTAL", label: "综合税收", unit: "亿元", weight: 0.20,
-    targets: { 2024: 0.3, 2025: 0.5, 2026: 0.7, 2027: 1.0, 2028: 1.5 },
+    targets: { 2026: 0.7, 2027: 1.0, 2028: 1.5 },
   },
   PERSONAL_TAX: {
     key: "PERSONAL_TAX", label: "个人所得税", unit: "亿元", weight: 0.10,
-    targets: { 2024: 0.05, 2025: 0.08, 2026: 0.12, 2027: 0.18, 2028: 0.25 },
+    targets: { 2026: 0.12, 2027: 0.18, 2028: 0.25 },
   },
   SOCIAL_INSURANCE: {
     key: "SOCIAL_INSURANCE", label: "社保缴纳人数", unit: "人", weight: 0.15,
-    targets: { 2024: 200, 2025: 280, 2026: 380, 2027: 500, 2028: 650 },
+    targets: { 2026: 380, 2027: 500, 2028: 650 },
   },
   NATIONAL_TALENT: {
     key: "NATIONAL_TALENT", label: "国家级人才计划", unit: "人", weight: 0.05,
-    targets: { 2024: 1, 2025: 2, 2026: 3, 2027: 5, 2028: 8 },
+    targets: { 2026: 3, 2027: 5, 2028: 8 },
   },
   INVENTION_PATENT: {
     key: "INVENTION_PATENT", label: "发明专利申请", unit: "件", weight: 0.05,
-    targets: { 2024: 50, 2025: 80, 2026: 120, 2027: 180, 2028: 250 },
+    targets: { 2026: 120, 2027: 180, 2028: 250 },
   },
   INDUSTRY_CHAIN: {
     key: "INDUSTRY_CHAIN", label: "产业链企业", unit: "家", weight: 0.05,
-    targets: { 2024: 1, 2025: 2, 2026: 3, 2027: 5, 2028: 8 },
+    targets: { 2026: 3, 2027: 5, 2028: 8 },
   },
 };
 

@@ -214,9 +214,9 @@ function fmtDateTime(d: string | null): string {
 }
 
 /** 将主接待字段（可能含"部门·姓名"格式）聚合为"去重部门名 空格连接"字符串。
- *  例：["LPA · Yuting", "LPA · Zoe"] → "LPA"
- *      ["LPA · Yuting", "SPA · John"] → "LPA SPA"
- *      "LPA · Yuting" → "LPA"
+ *  例：["PA · Yuting", "PA · Zoe"] → "PA"
+ *      ["PA · Yuting", "SPA · John"] → "PA SPA"
+ *      "PA · Yuting" → "PA"
  */
 function formatReceiversDisplay(receivers: string | string[] | null | undefined): string {
   if (!receivers) return "";
@@ -3723,7 +3723,7 @@ const DEFAULT_DRAWER_FIELDS: DrawerField[] = [
 ];
 
 const DEFAULT_PAGE_CONFIG: PageConfig = {
-  pageMeta:     { title: "政府接待", description: "接待记录管理与归档" },
+  pageMeta:     { title: "会议接待", description: "接待记录管理与归档" },
   quickLinks:   DEFAULT_QUICK_LINKS,
   drawerFields: DEFAULT_DRAWER_FIELDS,
 };
@@ -3874,7 +3874,7 @@ function PageConfigModal({ config, onClose, onSaved }: {
               <div style={{ fontSize: 12, color: "#94a3b8" }}>修改后，页面顶部标题和副标题将即时生效。</div>
               <div>
                 <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#64748b", marginBottom: 6 }}>页面名称</label>
-                <input value={draft.pageMeta.title} onChange={e => setMeta("title", e.target.value)} placeholder="政府接待" style={iS} />
+                <input value={draft.pageMeta.title} onChange={e => setMeta("title", e.target.value)} placeholder="会议接待" style={iS} />
               </div>
               <div>
                 <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#64748b", marginBottom: 6 }}>标语 / 备注</label>

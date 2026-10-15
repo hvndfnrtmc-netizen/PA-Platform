@@ -1,0 +1,60 @@
+# Vercel build 排除项（减小部署体积、加快 build 速度）
+#
+# 优先级：.vercelignore > .gitignore
+# 这里只列 Vercel 部署需要排除、但 git 仍要保留的文件。
+
+# 文档/脚本（沙箱工具、迁移工具、文档说明）
+/docs
+/oracle-cloud-setup-guide.md
+/oracle-ssh-public-key.txt
+
+# 本地启动脚本和日志
+/start-dev.bat
+/start-pa-platform.bat
+/setup-autostart.ps1
+/auto-backup.js
+/setup-autostart.ps1
+/logs
+
+# 一次性 / 调试脚本
+/prisma/clear-agreement-data-by-year.ts
+/prisma/clear-agreement-data.ts
+/prisma/verify-login.ts
+/prisma/migrate-major-projects.ts
+/prisma/seed-reception-todos.ts
+/prisma/seed.ts
+/prisma/add_test_users.ts
+/scripts/clean-compound-formats.ts
+/scripts/create-huawei-db.js
+/scripts/migrate-data-v2.js
+/scripts/migrate-data-v3.js
+/scripts/migrate-data-v4.js
+/scripts/migrate-data.js
+/scripts/migrate-host-dicts.ts
+/scripts/migrate-todo-list.ts
+/scripts/migrate-visit-purpose.ts
+/scripts/seed-major-projects.mjs
+/scripts/seed-talent-programs.ts
+/scripts/seed-test-party-users.ts
+/scripts/test-connection.js
+/scripts/verify-migration.js
+
+# 临时 / 备份文件
+*.bak
+*.tmp
+*.tsbuildinfo
+/t99.txt
+/card_content.txt
+/do_award.js
+/write_card_step1.js
+
+# Prisma Client 生成产物（Vercel build 会重新跑 postinstall）
+/src/generated
+
+# 测试文件
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+/__tests__
+/tests

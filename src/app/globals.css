@@ -58,3 +58,72 @@ body {
   to   { opacity: 1; transform: translateY(0); }
 }
 .animate-fade-in { animation: fade-in 0.3s ease-out both; }
+
+/* ──────────────────────────────────────────────────────────────
+   只读演示模式（dashboard 主内容区 data-readonly="true"）
+   作用范围：所有表单输入框 + 表单提交按钮。
+   例外（必要交互不受影响）：
+     - data-allow-readonly="true"  → 显式豁免（如退出登录）
+     - type="button" / 无 type       → 普通 UI 按钮（筛选、打开弹窗、跳转路由）保持可用
+   ────────────────────────────────────────────────────────────── */
+
+/* 输入控件：灰化 + 鼠标禁用 + 文字不可选中 */
+[data-readonly="true"] input:not([data-allow-readonly]),
+[data-readonly="true"] textarea:not([data-allow-readonly]),
+[data-readonly="true"] select:not([data-allow-readonly]) {
+  background-color: #f1f5f9 !important;
+  color:            #94a3b8 !important;
+  cursor:           not-allowed !important;
+  border-color:     #e2e8f0 !important;
+  opacity:          0.75;
+  user-select:      none;
+  caret-color:      transparent;
+}
+
+[data-readonly="true"] input:focus:not([data-allow-readonly]),
+[data-readonly="true"] textarea:focus:not([data-allow-readonly]),
+[data-readonly="true"] select:focus:not([data-allow-readonly]) {
+  outline:     none !important;
+  box-shadow:  none !important;
+}
+
+/* checkbox / radio：灰化且不可点 */
+[data-readonly="true"] input[type="checkbox"]:not([data-allow-readonly]),
+[data-readonly="true"] input[type="radio"]:not([data-allow-readonly]) {
+  pointer-events: none;
+  opacity:        0.5;
+  filter:         grayscale(0.6);
+}
+
+/* 表单提交按钮：禁用 + 灰化（type="button" 不动，普通 UI 按钮照常用） */
+[data-readonly="true"] button[type="submit"] {
+  opacity:          0.45 !important;
+  cursor:           not-allowed !important;
+  pointer-events:   none !important;
+  filter:           grayscale(0.6);
+}
+
+/* data-write 显式标记"会写入"的按钮（非 submit 但属写操作）也禁用 */
+[data-readonly="true"] button[data-write="true"]:not([data-allow-readonly]) {
+  opacity:          0.45 !important;
+  cursor:           not-allowed !important;
+  pointer-events:   none !important;
+  filter:           grayscale(0.6);
+}
+
+/* 顶部只读提示横幅 */
+.pa-readonly-banner {
+  position:        sticky;
+  top:             0;
+  z-index:         40;
+  display:         flex;
+  align-items:     center;
+  gap:             8px;
+  padding:         8px 16px;
+  background:      linear-gradient(90deg, #fef3c7 0%, #fde68a 100%);
+  border-bottom:   1px solid #fcd34d;
+  color:           #92400e;
+  font-size:       13px;
+  font-weight:     500;
+}
+

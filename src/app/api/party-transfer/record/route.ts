@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath }            from "next/cache";
 import prisma                        from "@/lib/prisma";
 import { getSession }                from "@/lib/auth";
+import { getPartyAccess }            from "@/lib/party-auth";
 
 // ── 序列化清洗：剔除无法存入 JSON 的 File/Blob/函数 等对象 ─────────
 function cleanForStorage(data: unknown): unknown {
@@ -44,7 +45,9 @@ export async function GET(_req: NextRequest) {
   const session = await getSession();
   if (!session?.user) return NextResponse.json({ error: "未登录" }, { status: 401 });
 
-  if (session.user.role === "SUPER_ADMIN") {
+  const access = await getPartyAccess({ userId: session.user.id, role: session.user.role });
+
+  if (access.isAdmin) {
     // Task 6：审批工作台严格排除 DRAFT
     const records = await prisma.partyTransferRecord.findMany({
       where:   { status: { not: "DRAFT" } },
@@ -160,7 +163,10 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const session = await getSession();
   if (!session?.user) return NextResponse.json({ error: "未登录" }, { status: 401 });
-  if (session.user.role !== "SUPER_ADMIN")
+
+  // 审批侧权限：SUPER_ADMIN 或 hasPartyAdminAccess
+  const access = await getPartyAccess({ userId: session.user.id, role: session.user.role });
+  if (!access.isAdmin)
     return NextResponse.json({ error: "无权限" }, { status: 403 });
 
   let body: {

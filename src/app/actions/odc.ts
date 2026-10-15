@@ -520,7 +520,7 @@ export async function generateInstitutionIntelligence(
         `请以 JSON 格式返回（直接输出 JSON，不要代码块或额外文字）：\n` +
         `{"news":[{"title":"真实新闻标题","date":"YYYY-MM-DD","url":"来源链接，无则空字符串"}],` +
         `"summary":"根据上述新闻总结近一个月的核心政策（如无则写：近一个月内未在互联网上监测到该机构的重大公开动态）",` +
-        `"businessAnalysis":"结合Momenta自动驾驶业务，分析上述动态可能带来的合作机会"}`,
+        `"businessAnalysis":"结合瑞启深空自动驾驶业务，分析上述动态可能带来的合作机会"}`,
       model: "spark-1-pro",
       schema: {
         type: "object",
