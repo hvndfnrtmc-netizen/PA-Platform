@@ -99,7 +99,7 @@ Vercel 项目页 → **Settings** → **Environment Variables**，按下面表�
 | `ABP_LLM_API_KEY` | 留空 | 无 AI 需求可不管 |
 | `ABP_LLM_BASE_URL` | 留空 | |
 | `ABP_MODEL_NAME` | 留空 | |
-| `ADMIN_PASSWORD` | 重新生成强密码 | 演示账号统一密码 `Pa@2026demo` |
+| `ADMIN_PASSWORD` | 重新生成强密码 | ⚠️ 务必在 `.env` 中替换为你自己的密码；本仓库的演示账号密码参考 `scripts/create-demo-accounts.ts` 顶部的 `DEMO_PASSWORD` 常量 |
 
 **勾选 Environment**：Production / Preview / Development **全选**（演示用不需要分级）。
 
@@ -166,12 +166,12 @@ node ./node_modules/tsx/dist/cli.mjs --env-file=.env.production scripts/restore-
 
 ## 8. 验证生产部署（5 分钟）
 
-打开 `https://pa-platform-xxx.vercel.app/login`，依次：
+打开 `https://pa-platform-xxx.vercel.app/login`，依次用以下账号验证（**密码在你本地 `.env` 与 `scripts/create-demo-accounts.ts` 里**，不要提交到 GitHub）：
 
-1. ✅ 用 `admin@ruiqishenkong.com` / `RqAdmin2026!` 登录 → 进 dashboard
-2. ✅ 切到 `viewer01@ruiqishenkong.com` / `Pa@2026demo` → 看到只读模式
-3. ✅ 切到 `party-member@ruiqishenkong.com` / `Pa@2026demo` → 看到党员关系提交端
-4. ✅ 切到 `party-admin@ruiqishenkong.com` / `Pa@2026demo` → 看到审批工作台
+1. ✅ 用超级管理员账号登录（账号密码在 `.env` 的 `ADMIN_PASSWORD` 字段） → 进 dashboard
+2. ✅ 切到「演示·查阅账号」（viewer01）→ 看到只读模式（顶部黄横幅 + 表单灰化）
+3. ✅ 切到「演示·党员（提交端）」（party-member）→ 看到党员关系提交端
+4. ✅ 切到「演示·党员关系管理员」（party-admin）→ 看到审批工作台
 
 全部正常 → 部署完成 🎉
 

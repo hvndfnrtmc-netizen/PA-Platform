@@ -55,9 +55,12 @@ Adm!n_Pa_Platform_2026_Sec
 
 ---
 
-## 演示账号密码（统一 `Pa@2026demo`）
+## 演示账号密码
 
 数据迁移时直接连哈希一起搬过来，**不需要重新生成**。
+
+> ⚠️ 本节内容不上公网：实际密码写在 `scripts/create-demo-accounts.ts` 顶部 `DEMO_PASSWORD` 常量里。
+> 如果要重新生成，直接改这个常量 + 重跑 `node ./node_modules/tsx/dist/cli.mjs scripts/create-demo-accounts.ts` 即可（脚本幂等）。
 
 ---
 
