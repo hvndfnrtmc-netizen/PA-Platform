@@ -61,7 +61,7 @@ async function main() {
     "-d", db,
     "--no-owner",            // Vercel / Neon 用自己账号
     "--no-privileges",       // 同上
-    "--clean-if-exist",      // 目标库已有表时先 DROP
+    "--clean",               // 目标库已有表时先 DROP
     "--if-exists",
     "-Fc",                   // custom format（压缩、二进制）
     "-f", outFile,

@@ -69,7 +69,7 @@ async function main() {
     "-d", db,
     "--no-owner",
     "--no-privileges",
-    "--clean-if-exist",
+    "--clean",
     "--if-exists",
     "-v",
     file,

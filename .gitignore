@@ -74,3 +74,8 @@ next-env.d.ts
 /setup-autostart.ps1
 /t99.txt
 /card_content.txt
+
+# Neon 迁移文件（含数据库密码 + 完整数据），绝不进仓库
+/migrate-to-neon.bat
+/pg-dump-*.sql
+/pg-dump-*.dump
