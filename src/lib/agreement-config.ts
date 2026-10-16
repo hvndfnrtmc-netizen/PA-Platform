@@ -7,7 +7,7 @@
  * 演示脱敏开关：true 时界面上所有 KPI 目标值显示为 "XX"。
  * 内部计算（完成率 / 差距 / 状态）仍使用真实 targets，仅展示层打码。
  */
-export const KPI_TARGET_MASKED = true;
+export const KPI_TARGET_MASKED = false;
 
 /** 展示层专用：脱敏开关打开时返回 "XX"，否则返回原值字符串 */
 export function fmtTargetValue(v: string | number): string {
