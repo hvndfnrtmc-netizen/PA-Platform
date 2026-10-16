@@ -14,6 +14,34 @@ export function fmtTargetValue(v: string | number): string {
   return KPI_TARGET_MASKED ? "XX" : String(v);
 }
 
+/**
+ * 协议考核与拨付规则（来源：落地协议「甲方政策支持」条款）
+ *
+ * 甲方对乙方的政策支持，可根据乙方当年度工作目标完成情况进行相应调整：
+ *   - 当年度指标完成率达到 100% 及以上的          → 全额拨付扶持资金
+ *   - 当年度约定指标完成率达到 80% 及以上不足 100% 的 → 根据实际完成比例同比例拨付
+ *   - 当年指标完成率未达到 80% 的                 → 取消相应资金和政策支持
+ */
+export const ASSESSMENT_RULES = {
+  /** 全额拨付线：完成率 ≥ 100% → 全额拨付 */
+  FULL_PAYMENT_PCT: 1.0,
+  /** 拨付下限 / 取消线：完成率 < 80% → 取消相应资金和政策支持 */
+  CUTOFF_PCT: 0.8,
+} as const;
+
+/**
+ * 依据完成率计算当年扶持资金拨付比例（0 ~ 1）
+ *   ≥100%      → 1（全额）
+ *   80% ~ 100% → 完成率本身（同比例拨付）
+ *   <80%       → 0（取消相应资金和政策支持）
+ */
+export function computeFundingRatio(pct: number | null): number | null {
+  if (pct === null) return null;
+  if (pct >= ASSESSMENT_RULES.FULL_PAYMENT_PCT) return 1;
+  if (pct >= ASSESSMENT_RULES.CUTOFF_PCT)       return pct;
+  return 0;
+}
+
 export const KPI_KEYS = [
   "REVENUE",
   "LOCAL_CONTRIBUTION",
@@ -62,8 +90,9 @@ export interface KpiActual {
   weight: number;
   actual: number | null;
   target: number;
-  pct:    number | null;  // 0-1
-  gap90:  number | null;  // 距 90% 全额达标线差距
+  pct:    number | null;             // 完成率 0-1
+  fundingRatio: number | null;       // 当年扶持资金拨付比例 0-1（≥100%→1；80-100%→pct；<80%→0）
+  gapToFull:    number | null;       // 距 100% 全额拨付线还差的量（>0 表示未达全额）
   status: "compliant" | "warning" | "risk" | "no_data";
 }
 
@@ -108,12 +137,14 @@ export function computeKpiActuals(
     const target = cfg.targets[year] ?? 0;
     const actual = actuals[key];
     const pct    = actual !== null && target > 0 ? actual / target : null;
-    const gap90  = pct !== null ? Math.max(0, target * 0.9 - (actual ?? 0)) : null;
+    // 拨付规则：≥100% 全额；80%-100% 同比例；<80% 取消
+    const fundingRatio = computeFundingRatio(pct);
+    const gapToFull    = pct !== null ? Math.max(0, target - (actual ?? 0)) : null;
     const status: KpiActual["status"] =
-      pct === null ? "no_data" :
-      pct >= 0.9   ? "compliant" :
-      pct >= 0.7   ? "warning"   : "risk";
-    return { key, label: cfg.label, unit: cfg.unit, weight: cfg.weight, actual, target, pct, gap90, status };
+      pct === null                              ? "no_data" :
+      pct >= ASSESSMENT_RULES.FULL_PAYMENT_PCT  ? "compliant" :
+      pct >= ASSESSMENT_RULES.CUTOFF_PCT        ? "warning"   : "risk";
+    return { key, label: cfg.label, unit: cfg.unit, weight: cfg.weight, actual, target, pct, fundingRatio, gapToFull, status };
   });
 }
 

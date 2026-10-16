@@ -317,15 +317,15 @@ export default function BiDashboard() {
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div className="flex items-center gap-1.5 p-2 rounded-lg bg-emerald-50 border border-emerald-100">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                <span className="text-emerald-700 font-medium">全额达标 {compliant}</span>
+                <span className="text-emerald-700 font-medium">全额拨付 {compliant}</span>
               </div>
               <div className="flex items-center gap-1.5 p-2 rounded-lg bg-amber-50 border border-amber-100">
                 <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
-                <span className="text-amber-700 font-medium">打折区 {warning}</span>
+                <span className="text-amber-700 font-medium">按比例拨付 {warning}</span>
               </div>
               <div className="flex items-center gap-1.5 p-2 rounded-lg bg-red-50 border border-red-100">
                 <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
-                <span className="text-red-700 font-medium">风险区 {risk}</span>
+                <span className="text-red-700 font-medium">取消支持 {risk}</span>
               </div>
               <div className="flex items-center gap-1.5 p-2 rounded-lg bg-slate-50 border border-slate-200">
                 <span className="w-2 h-2 rounded-full bg-slate-400 shrink-0" />

@@ -84,9 +84,9 @@ function statusMeta(v: string) {
 }
 
 function kpiStatusMeta(status: KpiActual["status"]) {
-  if (status === "compliant") return { label: "全额达标", color: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-200", bar: "bg-emerald-500" };
-  if (status === "warning")   return { label: "打折区间", color: "text-amber-700",   bg: "bg-amber-50",   border: "border-amber-200",   bar: "bg-amber-400"  };
-  if (status === "risk")      return { label: "危险区间", color: "text-red-700",     bg: "bg-red-50",     border: "border-red-200",     bar: "bg-red-500"    };
+  if (status === "compliant") return { label: "全额拨付", color: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-200", bar: "bg-emerald-500" };
+  if (status === "warning")   return { label: "按比例拨付", color: "text-amber-700",   bg: "bg-amber-50",   border: "border-amber-200",   bar: "bg-amber-400"  };
+  if (status === "risk")      return { label: "取消支持", color: "text-red-700",     bg: "bg-red-50",     border: "border-red-200",     bar: "bg-red-500"    };
   return                             { label: "暂无数据", color: "text-slate-400",   bg: "bg-slate-50",   border: "border-slate-200",   bar: "bg-slate-300"  };
 }
 
@@ -329,9 +329,16 @@ function KpiTab({
                 }{currentKpi.unit}
               </span>
             </div>
-            <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${kpiStatusMeta(currentKpi.status).bg} ${kpiStatusMeta(currentKpi.status).color} ${kpiStatusMeta(currentKpi.status).border}`}>
-              {year}年：{kpiStatusMeta(currentKpi.status).label}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${kpiStatusMeta(currentKpi.status).bg} ${kpiStatusMeta(currentKpi.status).color} ${kpiStatusMeta(currentKpi.status).border}`}>
+                {year}年：{kpiStatusMeta(currentKpi.status).label}
+              </span>
+              {currentKpi.fundingRatio !== null && (
+                <span className="text-xs px-2.5 py-1 rounded-full font-medium border border-blue-200 bg-blue-50 text-blue-700">
+                  预计拨付 {Math.round(currentKpi.fundingRatio * 100)}%
+                </span>
+              )}
+            </div>
           </div>
 
           {/* 年度列表 */}
@@ -343,7 +350,7 @@ function KpiTab({
               const rawPct    = isCurrent && currentKpi.pct !== null ? currentKpi.pct * 100 : 0;
               const pct       = Number.isFinite(rawPct) ? Math.min(rawPct, 100) : 0;
               const rowMeta   = isCurrent ? kpiStatusMeta(currentKpi.status) : kpiStatusMeta("no_data");
-              const gap       = isCurrent && currentKpi.gap90 !== null && currentKpi.gap90 > 0 ? currentKpi.gap90 : null;
+              const gap       = isCurrent && currentKpi.gapToFull !== null && currentKpi.gapToFull > 0 ? currentKpi.gapToFull : null;
 
               return (
                 <div key={y} className="bg-white rounded-lg p-4 shadow-sm flex flex-col gap-2">
@@ -916,8 +923,8 @@ export default function AgreementTrackingPage() {
           {/* 拨付规则说明 */}
           <div className="mt-4 px-4 py-2.5 bg-slate-50 rounded-xl border border-slate-100">
             <p className="text-xs text-slate-500">
-              <span className="font-medium text-slate-600">补贴拨付规则：</span>
-              完成率 ≥90% → 全额拨付；70%-90% → 按比例打折；＜70% → 当年零拨付
+              <span className="font-medium text-slate-600">扶持资金拨付规则：</span>
+              完成率 ≥100% → 全额拨付扶持资金；80%~100% → 按实际完成比例同比例拨付；＜80% → 取消相应资金和政策支持
             </p>
           </div>
         </div>
@@ -974,13 +981,13 @@ export default function AgreementTrackingPage() {
             <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between shrink-0">
               <div>
                 {detailZone === "full" && (
-                  <h2 className="text-base font-semibold text-emerald-700">全额达标指标明细 (≥90%)</h2>
+                  <h2 className="text-base font-semibold text-emerald-700">全额拨付指标明细 (≥100%)</h2>
                 )}
                 {detailZone === "discount" && (
-                  <h2 className="text-base font-semibold text-amber-700">打折区间指标明细 (70%-90%)</h2>
+                  <h2 className="text-base font-semibold text-amber-700">按比例拨付指标明细 (80%~100%)</h2>
                 )}
                 {detailZone === "risk" && (
-                  <h2 className="text-base font-semibold text-red-700">危险区间指标明细 (&lt;70%)</h2>
+                  <h2 className="text-base font-semibold text-red-700">取消支持指标明细 (&lt;80%)</h2>
                 )}
                 <p className="text-xs text-slate-400 mt-0.5">
                   共 {(detailZone === "full" ? fullKpis : detailZone === "discount" ? discountKpis : riskKpis).length} 项指标
