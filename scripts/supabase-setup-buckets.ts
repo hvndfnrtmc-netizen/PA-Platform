@@ -10,6 +10,7 @@ const BUCKETS = [
   { name: "awards-proofs",      public: true }, // 荣誉资质证明附件
   { name: "major-project-files", public: true }, // 重大项目附件
   { name: "odc-avatars",        public: true }, // 头像
+  { name: "pa-platform-files",  public: true }, // 协议文件（agreement upload 默认桶）
 ];
 
 async function main() {
